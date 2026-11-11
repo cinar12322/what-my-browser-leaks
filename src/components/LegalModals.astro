@@ -1,132 +1,28 @@
 ---
 ---
-<!-- Cookie Consent Banner & Modals (Magic UI Glass Style) -->
-<div id="cookie-consent-banner" class="fixed bottom-6 right-6 left-6 md:left-auto md:max-w-md z-50 transition-all duration-500 translate-y-32 opacity-0 pointer-events-none">
-  <div class="glass-panel p-5 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden">
-    <div class="flex items-start gap-3">
-      <div class="w-9 h-9 rounded-xl bg-[#06b6d4]/10 border border-[#4cd7f6]/30 flex items-center justify-center text-[#4cd7f6] flex-shrink-0 mt-0.5">
-        <span class="material-symbols-outlined text-[20px]">cookie</span>
-      </div>
-      <div class="flex-1">
-        <h4 class="text-sm font-semibold text-[#dfe2ef]">Privacy & Font Preferences</h4>
-        <p class="text-xs text-[#bcc9cd] mt-1 leading-relaxed">
-          This site operates with a strict <strong>Zero-Egress</strong> policy for fingerprinting. However, external Google Fonts (<code class="text-[#4cd7f6] font-mono text-[10px]">fonts.googleapis.com</code>) may receive your IP upon asset loading. You can choose your preference below.
-        </p>
-        
-        <div class="flex items-center gap-2 mt-4">
-          <button id="btn-accept-all" class="flex-1 py-1.5 px-3 rounded-lg bg-[#06b6d4] hover:bg-[#4cd7f6] text-[#003640] font-semibold text-xs font-mono transition-all">
-            Accept All
-          </button>
-          <button id="btn-open-settings" class="py-1.5 px-3 rounded-lg bg-[#1c1f29] hover:bg-[#262a34] text-[#dfe2ef] border border-white/10 text-xs font-mono transition-all">
-            Customize
-          </button>
-          <button id="btn-reject-optional" class="py-1.5 px-3 rounded-lg bg-[#1c1f29] hover:bg-[#262a34] text-[#bcc9cd] hover:text-white border border-white/10 text-xs font-mono transition-all">
-            Essential Only
-          </button>
-        </div>
-
-        <div class="flex items-center justify-between mt-3 pt-2 border-t border-white/5 text-[11px] font-mono">
-          <button id="trigger-privacy-modal" class="text-[#869397] hover:text-[#4cd7f6] transition-colors">Privacy Policy</button>
-          <span class="text-[#869397]">•</span>
-          <button id="trigger-terms-modal" class="text-[#869397] hover:text-[#4cd7f6] transition-colors">Terms of Service</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Cookie Settings Modal -->
-<div id="cookie-settings-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
-  <div class="glass-panel w-full max-w-lg p-6 rounded-2xl border border-white/10 flex flex-col gap-5 max-h-[85vh] overflow-y-auto">
-    <div class="flex items-center justify-between pb-3 border-b border-white/10">
-      <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[22px] text-[#4cd7f6]">tune</span>
-        <h3 class="text-base font-semibold text-[#dfe2ef]">Cookie & Third-Party Preferences</h3>
-      </div>
-      <button id="btn-close-settings" class="text-[#869397] hover:text-white">
-        <span class="material-symbols-outlined text-[20px]">close</span>
-      </button>
-    </div>
-
-    <div class="flex flex-col gap-4 text-xs text-[#bcc9cd]">
-      <!-- Essential -->
-      <div class="p-3 bg-[#0a0e17] rounded-xl border border-white/5 flex items-center justify-between">
-        <div class="flex flex-col gap-1 pr-4">
-          <span class="font-semibold text-[#dfe2ef] text-sm">Essential Client Storage</span>
-          <p class="leading-relaxed">Stores your audit preferences and consent choices locally on your device. Cannot be disabled.</p>
-        </div>
-        <span class="font-mono text-[10px] text-[#4edea3] bg-[#4edea3]/10 px-2 py-0.5 rounded border border-[#4edea3]/20">Always Active</span>
-      </div>
-
-      <!-- Google Fonts -->
-      <div class="p-3 bg-[#0a0e17] rounded-xl border border-white/5 flex items-center justify-between">
-        <div class="flex flex-col gap-1 pr-4">
-          <span class="font-semibold text-[#dfe2ef] text-sm">Google Fonts & Typography</span>
-          <p class="leading-relaxed">Loads Geist and JetBrains Mono fonts via Google CDN. Disabling falls back to standard local system fonts.</p>
-        </div>
-        <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="toggle-google-fonts" class="sr-only peer" checked>
-          <div class="w-9 h-5 bg-[#262a34] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#06b6d4]"></div>
-        </label>
-      </div>
-
-      <!-- Zero-Egress Analytics Guarantee -->
-      <div class="p-3 bg-[#0a0e17] rounded-xl border border-white/5 flex items-center justify-between">
-        <div class="flex flex-col gap-1 pr-4">
-          <span class="font-semibold text-[#dfe2ef] text-sm">Telemetry & Tracking Cookies</span>
-          <p class="leading-relaxed">This site uses NO tracking cookies, no Google Analytics, and transmits zero fingerprint telemetry.</p>
-        </div>
-        <span class="font-mono text-[10px] text-[#869397] bg-white/5 px-2 py-0.5 rounded">None Present</span>
-      </div>
-    </div>
-
-    <div class="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-      <button id="btn-save-settings" class="py-2 px-5 rounded-lg bg-[#06b6d4] hover:bg-[#4cd7f6] text-[#003640] font-semibold text-xs font-mono transition-all">
-        Save Preferences
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Privacy Policy Modal -->
+<!-- Privacy Policy & Terms Modals (Zero-Egress Compliant) -->
 <div id="privacy-policy-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
-  <div class="glass-panel w-full max-w-2xl p-6 rounded-2xl border border-white/10 flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
-    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+  <div class="console-card w-full max-w-2xl p-6 rounded-lg border border-[#2f3854] flex flex-col gap-4 max-h-[85vh] overflow-y-auto bg-[#131722]">
+    <div class="flex items-center justify-between pb-3 border-b border-[#1e2436]">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[22px] text-[#4edea3]">verified_user</span>
-        <h3 class="text-base font-semibold text-[#dfe2ef]">Privacy Policy</h3>
+        <span class="material-symbols-outlined text-[20px] text-[#10b981]">verified_user</span>
+        <h3 class="text-sm font-bold font-mono uppercase text-white">Privacy Policy</h3>
       </div>
-      <button id="btn-close-privacy" class="text-[#869397] hover:text-white">
-        <span class="material-symbols-outlined text-[20px]">close</span>
+      <button id="btn-close-privacy" class="text-[#5e6982] hover:text-white">
+        <span class="material-symbols-outlined text-[18px]">close</span>
       </button>
     </div>
 
-    <div class="text-xs text-[#bcc9cd] leading-relaxed flex flex-col gap-3 font-sans">
-      <p><strong class="text-white">Last Updated:</strong> November 2026</p>
+    <div class="text-xs text-[#9aa5be] leading-relaxed flex flex-col gap-3 font-sans">
+      <p><strong class="text-white">Zero-Egress Guarantee:</strong> FingerprintGuard executes entirely within your local browser runtime. No hashes, IP addresses, canvas renders, or hardware properties are ever transmitted to any remote server or stored in external databases.</p>
       
-      <h4 class="text-sm font-semibold text-[#dfe2ef] mt-2">1. Pure Client-Side Architecture (Zero-Egress)</h4>
-      <p>
-        FingerprintGuard is an educational, client-side browser fingerprint and privacy inspection utility. All hardware scans, canvas tests, WebGL reads, audio modulations, and font detections run exclusively in your browser session. <strong>No scanned hardware parameters, hashes, or IP addresses are sent to or stored on any server.</strong>
-      </p>
+      <p><strong class="text-white">No Third-Party Asset CDN:</strong> Unlike typical web apps, this project uses no external Google Fonts or telemetry trackers. All styles and typography are resolved from local system fonts to preserve absolute network isolation.</p>
 
-      <h4 class="text-sm font-semibold text-[#dfe2ef] mt-2">2. Google Fonts & External Assets</h4>
-      <p>
-        To deliver technical typography (Geist and JetBrains Mono), web fonts are requested from Google Fonts (<code class="text-[#4cd7f6]">fonts.googleapis.com</code>). When downloading fonts, Google servers receive standard HTTP connection metadata (such as your IP address and User-Agent) as governed by Google's Privacy Policy. You can disable external Google Fonts in our Cookie/Font settings.
-      </p>
-
-      <h4 class="text-sm font-semibold text-[#dfe2ef] mt-2">3. Optional Public IP Test</h4>
-      <p>
-        The "Query Public IP" test does not run automatically. It fires only when you click the button explicitly, querying the third-party endpoint <code class="text-[#4cd7f6]">api.ipify.org</code> directly from your browser.
-      </p>
-
-      <h4 class="text-sm font-semibold text-[#dfe2ef] mt-2">4. Cookies & Local Storage</h4>
-      <p>
-        We do not use advertising or tracking cookies. Local Storage is used strictly to remember your UI state and cookie/font consent preferences.
-      </p>
+      <p><strong class="text-white">Optional Public IP Query:</strong> The public IP lookup only executes when you explicitly click the "Fetch Public IP" button, querying <code class="text-[#00d2f0]">api.ipify.org</code> directly from your client.</p>
     </div>
 
-    <div class="flex justify-end pt-3 border-t border-white/10">
-      <button id="btn-dismiss-privacy" class="py-1.5 px-4 rounded-lg bg-[#1c1f29] hover:bg-[#262a34] text-[#dfe2ef] border border-white/10 text-xs font-mono">
+    <div class="flex justify-end pt-3 border-t border-[#1e2436]">
+      <button id="btn-dismiss-privacy" class="py-1 px-4 rounded bg-[#181d2b] hover:bg-[#262a34] text-white text-xs font-mono">
         Close
       </button>
     </div>
@@ -135,38 +31,25 @@
 
 <!-- Terms of Service Modal -->
 <div id="terms-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
-  <div class="glass-panel w-full max-w-2xl p-6 rounded-2xl border border-white/10 flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
-    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+  <div class="console-card w-full max-w-2xl p-6 rounded-lg border border-[#2f3854] flex flex-col gap-4 max-h-[85vh] overflow-y-auto bg-[#131722]">
+    <div class="flex items-center justify-between pb-3 border-b border-[#1e2436]">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[22px] text-[#4cd7f6]">gavel</span>
-        <h3 class="text-base font-semibold text-[#dfe2ef]">Terms of Service</h3>
+        <span class="material-symbols-outlined text-[20px] text-[#00d2f0]">gavel</span>
+        <h3 class="text-sm font-bold font-mono uppercase text-white">Terms of Service</h3>
       </div>
-      <button id="btn-close-terms" class="text-[#869397] hover:text-white">
-        <span class="material-symbols-outlined text-[20px]">close</span>
+      <button id="btn-close-terms" class="text-[#5e6982] hover:text-white">
+        <span class="material-symbols-outlined text-[18px]">close</span>
       </button>
     </div>
 
-    <div class="text-xs text-[#bcc9cd] leading-relaxed flex flex-col gap-3 font-sans">
-      <p><strong class="text-white">Effective Date:</strong> November 2026</p>
-
-      <h4 class="text-sm font-semibold text-[#dfe2ef] mt-2">1. Educational & Audit Purpose</h4>
-      <p>
-        FingerprintGuard is provided strictly for educational, security auditing, and defensive research purposes. It demonstrates how websites leverage standard browser APIs to construct unique fingerprint profiles.
-      </p>
-
-      <h4 class="text-sm font-semibold text-[#dfe2ef] mt-2">2. No Malicious Exploitation</h4>
-      <p>
-        You agree not to reverse-engineer or adapt this client test suite for unlawful surveillance, non-consensual biometric profiling, or malicious tracking operations.
-      </p>
-
-      <h4 class="text-sm font-semibold text-[#dfe2ef] mt-2">3. Disclaimer of Warranty</h4>
-      <p>
-        The uniqueness estimation is derived from heuristic entropy models (EFF Panopticlick methodology). The service is provided "AS IS", without warranties of complete anonymity or immunity from commercial device fingerprinting providers.
-      </p>
+    <div class="text-xs text-[#9aa5be] leading-relaxed flex flex-col gap-3 font-sans">
+      <p><strong class="text-white">Educational & Security Research:</strong> This tool is provided solely for defensive privacy assessment and browser security research.</p>
+      <p><strong class="text-white">Prohibited Use:</strong> Adapting this code for non-consensual surveillance, commercial user tracking, or fraud against third parties is prohibited.</p>
+      <p><strong class="text-white">Disclaimer:</strong> Entropy calculations are modeled on EFF Panopticlick heuristics. No warranty is provided for immunity against specialized tracking vendors.</p>
     </div>
 
-    <div class="flex justify-end pt-3 border-t border-white/10">
-      <button id="btn-dismiss-terms" class="py-1.5 px-4 rounded-lg bg-[#1c1f29] hover:bg-[#262a34] text-[#dfe2ef] border border-white/10 text-xs font-mono">
+    <div class="flex justify-end pt-3 border-t border-[#1e2436]">
+      <button id="btn-dismiss-terms" class="py-1 px-4 rounded bg-[#181d2b] hover:bg-[#262a34] text-white text-xs font-mono">
         Close
       </button>
     </div>
@@ -175,124 +58,27 @@
 
 <script is:inline>
   (function() {
-    const banner = document.getElementById('cookie-consent-banner');
-    const settingsModal = document.getElementById('cookie-settings-modal');
     const privacyModal = document.getElementById('privacy-policy-modal');
     const termsModal = document.getElementById('terms-modal');
 
-    const btnAccept = document.getElementById('btn-accept-all');
-    const btnReject = document.getElementById('btn-reject-optional');
-    const btnOpenSettings = document.getElementById('btn-open-settings');
-    const btnSaveSettings = document.getElementById('btn-save-settings');
-    const btnCloseSettings = document.getElementById('btn-close-settings');
-
-    const triggerPrivacy = document.getElementById('trigger-privacy-modal');
-    const triggerTerms = document.getElementById('trigger-terms-modal');
     const footerPrivacy = document.getElementById('footer-privacy-btn');
     const footerTerms = document.getElementById('footer-terms-btn');
-    const footerCookie = document.getElementById('footer-cookie-btn');
     const btnClosePrivacy = document.getElementById('btn-close-privacy');
     const btnDismissPrivacy = document.getElementById('btn-dismiss-privacy');
     const btnCloseTerms = document.getElementById('btn-close-terms');
     const btnDismissTerms = document.getElementById('btn-dismiss-terms');
 
-    const toggleGoogleFonts = document.getElementById('toggle-google-fonts');
-
-    const CONSENT_KEY = 'fingerprintguard_consent_v1';
-
-    function showBanner() {
-      if (banner) {
-        banner.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
-      }
-    }
-
-    function hideBanner() {
-      if (banner) {
-        banner.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
-      }
-    }
-
     function openModal(modal) {
-      if (modal) {
-        modal.classList.remove('opacity-0', 'pointer-events-none');
-      }
+      if (modal) modal.classList.remove('opacity-0', 'pointer-events-none');
     }
-
     function closeModal(modal) {
-      if (modal) {
-        modal.classList.add('opacity-0', 'pointer-events-none');
-      }
+      if (modal) modal.classList.add('opacity-0', 'pointer-events-none');
     }
 
-    // Apply or remove Google Fonts based on consent
-    function applyFontPreference(allowGoogleFonts) {
-      const fontLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
-      fontLinks.forEach(link => {
-        if (!allowGoogleFonts) {
-          link.setAttribute('disabled', 'true');
-        } else {
-          link.removeAttribute('disabled');
-        }
-      });
-    }
-
-    // Check saved state
-    const saved = localStorage.getItem(CONSENT_KEY);
-    if (!saved) {
-      setTimeout(showBanner, 1000);
-    } else {
-      try {
-        const config = JSON.parse(saved);
-        if (toggleGoogleFonts) toggleGoogleFonts.checked = !!config.googleFonts;
-        applyFontPreference(!!config.googleFonts);
-      } catch (e) {}
-    }
-
-    if (btnAccept) {
-      btnAccept.addEventListener('click', () => {
-        localStorage.setItem(CONSENT_KEY, JSON.stringify({ googleFonts: true, essential: true, timestamp: Date.now() }));
-        applyFontPreference(true);
-        hideBanner();
-      });
-    }
-
-    if (btnReject) {
-      btnReject.addEventListener('click', () => {
-        localStorage.setItem(CONSENT_KEY, JSON.stringify({ googleFonts: false, essential: true, timestamp: Date.now() }));
-        applyFontPreference(false);
-        hideBanner();
-      });
-    }
-
-    if (btnOpenSettings) {
-      btnOpenSettings.addEventListener('click', () => {
-        openModal(settingsModal);
-      });
-    }
-
-    if (btnCloseSettings) {
-      btnCloseSettings.addEventListener('click', () => closeModal(settingsModal));
-    }
-
-    if (btnSaveSettings) {
-      btnSaveSettings.addEventListener('click', () => {
-        const allowFonts = toggleGoogleFonts ? toggleGoogleFonts.checked : true;
-        localStorage.setItem(CONSENT_KEY, JSON.stringify({ googleFonts: allowFonts, essential: true, timestamp: Date.now() }));
-        applyFontPreference(allowFonts);
-        closeModal(settingsModal);
-        hideBanner();
-      });
-    }
-
-    // Privacy & Terms Triggers
-    if (triggerPrivacy) triggerPrivacy.addEventListener('click', () => openModal(privacyModal));
-    if (btnClosePrivacy) btnClosePrivacy.addEventListener('click', () => closeModal(privacyModal));
-    if (btnDismissPrivacy) btnDismissPrivacy.addEventListener('click', () => closeModal(privacyModal));
-
-    if (triggerTerms) triggerTerms.addEventListener('click', () => openModal(termsModal));
     if (footerPrivacy) footerPrivacy.addEventListener('click', () => openModal(privacyModal));
     if (footerTerms) footerTerms.addEventListener('click', () => openModal(termsModal));
-    if (footerCookie) footerCookie.addEventListener('click', () => openModal(settingsModal));
+    if (btnClosePrivacy) btnClosePrivacy.addEventListener('click', () => closeModal(privacyModal));
+    if (btnDismissPrivacy) btnDismissPrivacy.addEventListener('click', () => closeModal(privacyModal));
     if (btnCloseTerms) btnCloseTerms.addEventListener('click', () => closeModal(termsModal));
     if (btnDismissTerms) btnDismissTerms.addEventListener('click', () => closeModal(termsModal));
   })();

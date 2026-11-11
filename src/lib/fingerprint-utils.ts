@@ -1,6 +1,19 @@
 // src/lib/fingerprint-utils.ts
 
 /**
+ * Escapes HTML characters to prevent DOM-based XSS when rendering strings
+ */
+export function escapeHtml(str: string): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * SHA-256 hash generator utility
  */
 export async function computeSha256(text: string): Promise<string> {
@@ -29,10 +42,12 @@ export function calculateEntropy(state: {
   let entropyBits = 10.5; // Base browser entropy
 
   if (state.hasCanvasHash) entropyBits += 8.3;
-  if (state.webglRenderer && !state.webglRenderer.includes('Unknown') && !state.webglRenderer.includes('Hidden')) {
+  if (state.webglRenderer && typeof state.webglRenderer === 'string' && !state.webglRenderer.includes('Unknown') && !state.webglRenderer.includes('Hidden') && !state.webglRenderer.includes('Inaccessible')) {
     entropyBits += 7.2;
   }
-  if (state.hasAudioHash) entropyBits += 5.4;
+  if (state.hasAudioHash) {
+    entropyBits += 5.4;
+  }
   if (state.fontCount > 5) entropyBits += Math.min(state.fontCount * 0.4, 6.0);
   if (state.hasScreen) entropyBits += 3.5;
   if (state.hasHardware) entropyBits += 2.0;
@@ -46,13 +61,13 @@ export function calculateEntropy(state: {
 
   if (score >= 80) {
     level = 'critical';
-    title = 'Extremely Unique';
+    title = 'High Identifiability';
   } else if (score >= 50) {
     level = 'moderate';
-    title = 'Moderately Identifiable';
+    title = 'Moderate Uniqueness';
   } else {
     level = 'safe';
-    title = 'Concealed in the Crowd';
+    title = 'Standard Profile';
   }
 
   return {

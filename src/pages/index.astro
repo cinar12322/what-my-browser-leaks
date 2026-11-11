@@ -38,7 +38,7 @@ import LegalModals from '../components/LegalModals.astro';
     <!-- MAIN DASHBOARD CONTENT -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 flex flex-col gap-6">
 
-      <!-- HERO INSPECTION STATUS BANNER -->
+      <!-- HERO STATUS BANNER -->
       <section class="console-card p-6 flex flex-col lg:flex-row gap-6 items-stretch justify-between">
         <div class="flex-1 flex flex-col justify-between gap-4">
           <div>
@@ -471,8 +471,6 @@ import LegalModals from '../components/LegalModals.astro';
           <button id="footer-privacy-btn" class="hover:text-white transition-colors">Privacy Policy</button>
           <span>&bull;</span>
           <button id="footer-terms-btn" class="hover:text-white transition-colors">Terms of Service</button>
-          <span>&bull;</span>
-          <button id="footer-cookie-btn" class="hover:text-white transition-colors">Cookie & Font Settings</button>
         </div>
       </footer>
 
@@ -481,962 +479,929 @@ import LegalModals from '../components/LegalModals.astro';
   <LegalModals />
 </Layout>
 
-<!-- ENGINE SCRIPT -->
-<script is:inline>
-  (function() {
-    const AuditState = {
-      browser: {},
-      screen: {},
-      hardware: {},
-      locale: {},
-      canvas: {},
-      webgl: {},
-      audio: {},
-      fonts: {},
-      webrtc: {},
-      network: {},
-      storage: {},
-      codecs: {},
-      behavior: { mouseMoves: 0, clicks: 0, keyStrokes: 0, scrollDistance: 0, focused: true },
-      privacy: {},
-      consistency: {}
+<!-- CLIENT SCRIPT (Modular, XSS-Safe, Unified with fingerprint-utils) -->
+<script>
+  import { escapeHtml, computeSha256, calculateEntropy, checkConsistency } from '../lib/fingerprint-utils';
+
+  const AuditState: Record<string, any> = {
+    browser: {},
+    screen: {},
+    hardware: {},
+    locale: {},
+    canvas: {},
+    webgl: {},
+    audio: {},
+    fonts: {},
+    webrtc: {},
+    network: {},
+    storage: {},
+    codecs: {},
+    behavior: { mouseMoves: 0, clicks: 0, keyStrokes: 0, scrollDistance: 0, focused: true },
+    privacy: {},
+    consistency: {}
+  };
+
+  function createRow(label: string, value: any, note?: string, riskBadge?: string) {
+    const rawVal = String(value ?? 'Unknown');
+    const safeVal = escapeHtml(rawVal);
+    const safeLabel = escapeHtml(label);
+    const safeNote = note ? escapeHtml(note) : '';
+
+    const badgeStyle = riskBadge === 'Critical' ? 'text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20' :
+                       riskBadge === 'High'     ? 'text-[#f43f5e] bg-[#f43f5e]/10' :
+                       riskBadge === 'Medium'   ? 'text-[#f59e0b] bg-[#f59e0b]/10' :
+                                                  'text-[#10b981] bg-[#10b981]/10';
+
+    return `
+      <div class="data-row flex items-center justify-between py-1.5 px-1 hover:bg-white/[0.02] group transition-colors">
+        <div class="flex flex-col min-w-0 pr-2">
+          <span class="text-[11px] text-[#9aa5be] group-hover:text-white truncate font-sans" title="${safeNote}">${safeLabel}</span>
+          <span class="font-mono text-[11px] text-[#f0f3fa] truncate select-all mt-0.5">${safeVal}</span>
+        </div>
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          ${riskBadge ? `<span class="font-mono text-[9px] px-1.5 py-0.5 rounded ${badgeStyle}">${escapeHtml(riskBadge)}</span>` : ''}
+          <button class="row-copy-btn opacity-0 group-hover:opacity-100 p-0.5 text-[#5e6982] hover:text-[#00d2f0] transition-opacity" data-copy="${safeVal}" title="Copy">
+            <span class="material-symbols-outlined text-[13px]">content_copy</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // 1. Browser Core
+  async function auditBrowser() {
+    const nav = navigator as any;
+    let uaDataInfo = 'Legacy User-Agent';
+    let isHighEntropyPlatform = 'Hidden';
+
+    if (nav.userAgentData) {
+      const brands = nav.userAgentData.brands ? nav.userAgentData.brands.map((b: any) => `${b.brand} (${b.version})`).join(', ') : 'Unknown';
+      uaDataInfo = `${brands} | Mobile: ${nav.userAgentData.mobile}`;
+      try {
+        const highData = await nav.userAgentData.getHighEntropyValues(['platformVersion', 'architecture', 'model', 'bitness']);
+        isHighEntropyPlatform = `${highData.architecture || ''} ${highData.bitness ? highData.bitness + 'bit' : ''} ${highData.model || ''}`.trim() || 'Hidden';
+      } catch (e) {}
+    }
+
+    AuditState.browser = {
+      userAgent: nav.userAgent,
+      clientHints: uaDataInfo,
+      highEntropy: isHighEntropyPlatform,
+      platform: nav.platform,
+      vendor: nav.vendor || 'Unspecified',
+      languages: nav.languages ? nav.languages.join(', ') : nav.language,
+      cookieEnabled: nav.cookieEnabled ? 'Enabled' : 'Disabled',
+      doNotTrack: nav.doNotTrack || (window as any).doNotTrack || 'Unspecified',
+      pdfViewerEnabled: ('pdfViewerEnabled' in nav) ? (nav.pdfViewerEnabled ? 'Yes' : 'No') : 'Unknown',
+      webdriver: nav.webdriver ? 'Detected (Automated Bot)' : 'Clean (Real User)'
     };
 
-    async function computeSha256(text) {
-      if (!text) return '';
+    const container = document.getElementById('card-browser-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('User-Agent Header', AuditState.browser.userAgent, 'Browser brand and underlying OS.', 'High'),
+        createRow('Client Hints (UAData)', AuditState.browser.clientHints, 'Modern Chromium identification API.', 'Medium'),
+        createRow('Platform Architecture', AuditState.browser.highEntropy, 'Processor architecture and bitness.', 'Medium'),
+        createRow('Platform Property', AuditState.browser.platform, 'navigator.platform string.', 'Low'),
+        createRow('Engine Vendor', AuditState.browser.vendor, 'Engine vendor provider.', 'Low'),
+        createRow('Accepted Languages', AuditState.browser.languages, 'Configured browser language list.', 'Medium'),
+        createRow('Cookie Status', AuditState.browser.cookieEnabled, 'Cookie capability.', 'Low'),
+        createRow('Do Not Track (DNT)', AuditState.browser.doNotTrack, 'Tracking header preference.', 'Low'),
+        createRow('Internal PDF Viewer', AuditState.browser.pdfViewerEnabled, 'Chromium PDF engine status.', 'Low'),
+        createRow('Webdriver Status', AuditState.browser.webdriver, 'Headless automation flag.', AuditState.browser.webdriver.includes('Bot') ? 'Critical' : 'Low')
+      ].join('');
+    }
+  }
+
+  // 2. Screen & Viewport
+  function auditScreen() {
+    const sc = window.screen;
+    const dpr = window.devicePixelRatio || 1;
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isHDR = window.matchMedia('(dynamic-range: high)').matches;
+
+    AuditState.screen = {
+      screenResolution: `${sc.width} x ${sc.height}`,
+      availResolution: `${sc.availWidth} x ${sc.availHeight}`,
+      windowSize: `${window.innerWidth} x ${window.innerHeight}`,
+      pixelRatio: dpr,
+      colorDepth: `${sc.colorDepth || 24}-bit`,
+      orientation: (sc.orientation && sc.orientation.type) || 'Unknown',
+      themePreference: isDark ? 'Dark Theme' : 'Light Theme',
+      reducedMotion: isReducedMotion ? 'Yes' : 'No',
+      hdrSupport: isHDR ? 'HDR Supported' : 'SDR Standard'
+    };
+
+    const container = document.getElementById('card-screen-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Physical Resolution', AuditState.screen.screenResolution, 'Monitor resolution in pixels.', 'Medium'),
+        createRow('Usable Desktop Space', AuditState.screen.availResolution, 'Workspace excluding OS taskbars.', 'High'),
+        createRow('Viewport Dimensions', AuditState.screen.windowSize, 'Active browser inner window size.', 'Medium'),
+        createRow('Pixel Scaling Ratio (DPR)', `${AuditState.screen.pixelRatio}x`, 'HiDPI / Retina scale factor.', 'Medium'),
+        createRow('Color Depth', AuditState.screen.colorDepth, 'Display color depth.', 'Low'),
+        createRow('Display Orientation', AuditState.screen.orientation, 'Landscape or portrait mode.', 'Low'),
+        createRow('Theme Mode', AuditState.screen.themePreference, 'prefers-color-scheme setting.', 'Low'),
+        createRow('HDR Capability', AuditState.screen.hdrSupport, 'High Dynamic Range capability.', 'Medium')
+      ].join('');
+    }
+  }
+
+  // 3. Hardware & Battery
+  async function auditHardware() {
+    const nav = navigator as any;
+    let batteryInfo = 'API Unsupported or Blocked';
+    if ('getBattery' in nav) {
       try {
-        const msgBuffer = new TextEncoder().encode(text);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      } catch (e) {
-        return 'Conversion Error';
-      }
-    }
-
-    function createRow(label, value, note, riskBadge) {
-      const safeVal = String(value ?? 'Unknown');
-      const badgeStyle = riskBadge === 'Critical' ? 'text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20' :
-                         riskBadge === 'High'     ? 'text-[#f43f5e] bg-[#f43f5e]/10' :
-                         riskBadge === 'Medium'   ? 'text-[#f59e0b] bg-[#f59e0b]/10' :
-                                                    'text-[#10b981] bg-[#10b981]/10';
-
-      return `
-        <div class="data-row flex items-center justify-between py-1.5 px-1 hover:bg-white/[0.02] group transition-colors">
-          <div class="flex flex-col min-w-0 pr-2">
-            <span class="text-[11px] text-[#9aa5be] group-hover:text-white truncate font-sans">${label}</span>
-            <span class="font-mono text-[11px] text-[#f0f3fa] truncate select-all mt-0.5">${safeVal}</span>
-          </div>
-          <div class="flex items-center gap-1.5 flex-shrink-0">
-            ${riskBadge ? `<span class="font-mono text-[9px] px-1.5 py-0.5 rounded ${badgeStyle}">${riskBadge}</span>` : ''}
-            <button class="row-copy-btn opacity-0 group-hover:opacity-100 p-0.5 text-[#5e6982] hover:text-[#00d2f0] transition-opacity" data-copy="${safeVal.replace(/"/g, '&quot;')}" title="Copy">
-              <span class="material-symbols-outlined text-[13px]">content_copy</span>
-            </button>
-          </div>
-        </div>
-      `;
-    }
-
-    // 1. Browser Core
-    async function auditBrowser() {
-      const nav = navigator;
-      let uaDataInfo = 'Legacy User-Agent';
-      let isHighEntropyPlatform = 'Hidden';
-
-      if (nav.userAgentData) {
-        const brands = nav.userAgentData.brands ? nav.userAgentData.brands.map(b => `${b.brand} (${b.version})`).join(', ') : 'Unknown';
-        uaDataInfo = `${brands} | Mobile: ${nav.userAgentData.mobile}`;
-        try {
-          const highData = await nav.userAgentData.getHighEntropyValues(['platformVersion', 'architecture', 'model', 'bitness']);
-          isHighEntropyPlatform = `${highData.architecture || ''} ${highData.bitness ? highData.bitness + 'bit' : ''} ${highData.model || ''}`.trim() || 'Hidden';
-        } catch (e) {}
-      }
-
-      AuditState.browser = {
-        userAgent: nav.userAgent,
-        clientHints: uaDataInfo,
-        highEntropy: isHighEntropyPlatform,
-        platform: nav.platform,
-        vendor: nav.vendor || 'Unspecified',
-        languages: nav.languages ? nav.languages.join(', ') : nav.language,
-        cookieEnabled: nav.cookieEnabled ? 'Enabled' : 'Disabled',
-        doNotTrack: nav.doNotTrack || window.doNotTrack || 'Unspecified',
-        pdfViewerEnabled: ('pdfViewerEnabled' in nav) ? (nav.pdfViewerEnabled ? 'Yes' : 'No') : 'Unknown',
-        webdriver: nav.webdriver ? 'Detected (Automated Bot)' : 'Clean (Real User)'
-      };
-
-      const container = document.getElementById('card-browser-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('User-Agent Header', AuditState.browser.userAgent, 'Browser brand and underlying OS.', 'High'),
-          createRow('Client Hints (UAData)', AuditState.browser.clientHints, 'Modern Chromium identification API.', 'Medium'),
-          createRow('Platform Architecture', AuditState.browser.highEntropy, 'Processor architecture and bitness.', 'Medium'),
-          createRow('Platform Property', AuditState.browser.platform, 'navigator.platform string.', 'Low'),
-          createRow('Engine Vendor', AuditState.browser.vendor, 'Engine vendor provider.', 'Low'),
-          createRow('Accepted Languages', AuditState.browser.languages, 'Configured browser language list.', 'Medium'),
-          createRow('Cookie Status', AuditState.browser.cookieEnabled, 'Cookie capability.', 'Low'),
-          createRow('Do Not Track (DNT)', AuditState.browser.doNotTrack, 'Tracking header preference.', 'Low'),
-          createRow('Internal PDF Viewer', AuditState.browser.pdfViewerEnabled, 'Chromium PDF engine status.', 'Low'),
-          createRow('Webdriver Status', AuditState.browser.webdriver, 'Headless automation flag.', AuditState.browser.webdriver.includes('Bot') ? 'Critical' : 'Low')
-        ].join('');
-      }
-    }
-
-    // 2. Screen & Window
-    function auditScreen() {
-      const sc = window.screen;
-      const dpr = window.devicePixelRatio || 1;
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const isHDR = window.matchMedia('(dynamic-range: high)').matches;
-
-      AuditState.screen = {
-        screenResolution: `${sc.width} x ${sc.height}`,
-        availResolution: `${sc.availWidth} x ${sc.availHeight}`,
-        windowSize: `${window.innerWidth} x ${window.innerHeight}`,
-        pixelRatio: dpr,
-        colorDepth: `${sc.colorDepth || 24}-bit`,
-        orientation: (sc.orientation && sc.orientation.type) || 'Unknown',
-        themePreference: isDark ? 'Dark Theme' : 'Light Theme',
-        reducedMotion: isReducedMotion ? 'Yes' : 'No',
-        hdrSupport: isHDR ? 'HDR Supported' : 'SDR Standard'
-      };
-
-      const container = document.getElementById('card-screen-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Physical Resolution', AuditState.screen.screenResolution, 'Monitor resolution in pixels.', 'Medium'),
-          createRow('Usable Desktop Space', AuditState.screen.availResolution, 'Workspace excluding OS taskbars.', 'High'),
-          createRow('Viewport Dimensions', AuditState.screen.windowSize, 'Active browser inner window size.', 'Medium'),
-          createRow('Pixel Scaling Ratio (DPR)', `${AuditState.screen.pixelRatio}x`, 'HiDPI / Retina scale factor.', 'Medium'),
-          createRow('Color Depth', AuditState.screen.colorDepth, 'Display color depth.', 'Low'),
-          createRow('Display Orientation', AuditState.screen.orientation, 'Landscape or portrait mode.', 'Low'),
-          createRow('Theme Mode', AuditState.screen.themePreference, 'prefers-color-scheme setting.', 'Low'),
-          createRow('HDR Capability', AuditState.screen.hdrSupport, 'High Dynamic Range capability.', 'Medium')
-        ].join('');
-      }
-
-      const topScreen = document.getElementById('top-screen-res');
-      if (topScreen) topScreen.textContent = `${AuditState.screen.screenResolution} @ ${dpr}x`;
-    }
-
-    // 3. Hardware & Battery
-    async function auditHardware() {
-      const nav = navigator;
-      let batteryInfo = 'API Unsupported or Blocked';
-      if ('getBattery' in nav) {
-        try {
-          const batt = await nav.getBattery();
-          batteryInfo = `${Math.round(batt.level * 100)}% (${batt.charging ? 'Charging' : 'On Battery'})`;
-        } catch (e) {}
-      }
-
-      const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
-      let connInfo = 'Unknown';
-      if (conn) {
-        connInfo = `${conn.effectiveType || 'Unknown'} | Downlink: ~${conn.downlink || '0'} Mbps | RTT: ${conn.rtt || '0'}ms`;
-      }
-
-      AuditState.hardware = {
-        cpuCores: nav.hardwareConcurrency ? `${nav.hardwareConcurrency} Cores` : 'Hidden / Unknown',
-        deviceMemory: nav.deviceMemory ? `~${nav.deviceMemory} GB` : 'Unsupported (Chromium only)',
-        maxTouchPoints: nav.maxTouchPoints || 0,
-        touchSupport: ('ontouchstart' in window || (nav.maxTouchPoints > 0)) ? 'Yes' : 'No',
-        battery: batteryInfo,
-        networkType: connInfo
-      };
-
-      const container = document.getElementById('card-hardware-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Logical CPU Concurrency', AuditState.hardware.cpuCores, 'Hardware core count classification.', 'High'),
-          createRow('Device Memory Tier', AuditState.hardware.deviceMemory, 'Reported RAM class.', 'Medium'),
-          createRow('Max Touch Contacts', AuditState.hardware.maxTouchPoints, 'Hardware multi-touch limit.', 'Medium'),
-          createRow('Touch Input Active', AuditState.hardware.touchSupport, 'Touchscreen hardware support.', 'Low'),
-          createRow('Battery Status API', AuditState.hardware.battery, 'Battery charge percentage inspection.', 'Critical'),
-          createRow('Network Interface Type', AuditState.hardware.networkType, 'Network Information API bandwidth.', 'Medium')
-        ].join('');
-      }
-    }
-
-    // 4. Time & Locale
-    function auditLocale() {
-      const intl = Intl.DateTimeFormat().resolvedOptions();
-      const d = new Date();
-      const timezoneOffset = d.getTimezoneOffset();
-      const offsetHours = -(timezoneOffset / 60);
-      const offsetStr = `UTC${offsetHours >= 0 ? '+' : ''}${offsetHours}:00 (${timezoneOffset} mins)`;
-
-      let currencyTest = 'Failed';
-      try {
-        currencyTest = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(12345.67);
+        const batt = await nav.getBattery();
+        batteryInfo = `${Math.round(batt.level * 100)}% (${batt.charging ? 'Charging' : 'On Battery'})`;
       } catch (e) {}
-
-      AuditState.locale = {
-        timeZone: intl.timeZone || 'Unknown',
-        offset: offsetStr,
-        calendar: intl.calendar || 'gregory',
-        numberingSystem: intl.numberingSystem || 'latn',
-        sampleFormat: currencyTest
-      };
-
-      const container = document.getElementById('card-locale-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Geographical Time Zone', AuditState.locale.timeZone, 'Intl API regional zone.', 'Medium'),
-          createRow('UTC Time Offset', AuditState.locale.offset, 'Delta between system time and UTC.', 'Medium'),
-          createRow('System Calendar Type', AuditState.locale.calendar, 'Operating system default calendar.', 'Low'),
-          createRow('Numbering Glyphs', AuditState.locale.numberingSystem, 'Digit glyph numbering layout.', 'Low'),
-          createRow('Currency Formatting', AuditState.locale.sampleFormat, 'Regional comma and period separation.', 'Low')
-        ].join('');
-      }
     }
 
-    // 5. Canvas Render
-    async function auditCanvas() {
-      const canvas = document.getElementById('canvas-fingerprint-preview');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-
-      ctx.textBaseline = 'top';
-      ctx.font = "14px 'Arial', 'Times New Roman', sans-serif";
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = '#f60';
-      ctx.fillRect(5, 5, 55, 18);
-      ctx.fillStyle = '#069';
-      ctx.fillText('FingerprintGuard', 6, 18);
-      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-      ctx.fillText('Canvas 2.0', 8, 30);
-
-      const rad = ctx.createRadialGradient(85, 18, 2, 85, 18, 14);
-      rad.addColorStop(0, '#00d2f0');
-      rad.addColorStop(1, '#690005');
-      ctx.fillStyle = rad;
-      ctx.beginPath();
-      ctx.arc(85, 18, 12, 0, Math.PI * 2, true);
-      ctx.fill();
-
-      const dataUrl = canvas.toDataURL();
-      const hash = await computeSha256(dataUrl);
-
-      AuditState.canvas = {
-        hash: hash,
-        dataUrlLength: `${dataUrl.length} bytes`,
-        windingRule: ctx.isPointInPath(5, 5, 'evenodd') ? 'Supported' : 'Not Supported'
-      };
-
-      const container = document.getElementById('card-canvas-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Canvas SHA-256 Hash', hash.substring(0, 28) + '...', 'Produced by sub-pixel rasterization nuances.', 'Critical'),
-          createRow('Image Data Byte Size', AuditState.canvas.dataUrlLength, 'Base64 image buffer size.', 'Low'),
-          createRow('Winding Rule Support', AuditState.canvas.windingRule, 'Complex vector path calculation rule.', 'Low')
-        ].join('');
-      }
-
-      const topCanvas = document.getElementById('top-canvas-hash');
-      if (topCanvas) topCanvas.textContent = hash.substring(0, 12) + '...';
+    const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+    let connInfo = 'Unknown';
+    if (conn) {
+      connInfo = `${conn.effectiveType || 'Unknown'} | Downlink: ~${conn.downlink || '0'} Mbps | RTT: ${conn.rtt || '0'}ms`;
     }
 
-    // 6. WebGL Graphics
-    async function auditWebGL() {
-      let unmaskedVendor = 'Hidden / Inaccessible';
-      let unmaskedRenderer = 'Hidden / Inaccessible';
-      let maxTexture = 'Unknown';
-      let glVersion = 'Not Supported';
-      let extCount = 0;
-      let webglHash = 'None';
+    AuditState.hardware = {
+      cpuCores: nav.hardwareConcurrency ? `${nav.hardwareConcurrency} Cores` : 'Hidden / Unknown',
+      deviceMemory: nav.deviceMemory ? `~${nav.deviceMemory} GB` : 'Unsupported (Chromium only)',
+      maxTouchPoints: nav.maxTouchPoints || 0,
+      touchSupport: ('ontouchstart' in window || (nav.maxTouchPoints > 0)) ? 'Yes' : 'No',
+      battery: batteryInfo,
+      networkType: connInfo
+    };
 
-      try {
-        const glCanvas = document.createElement('canvas');
-        glCanvas.width = 64;
-        glCanvas.height = 64;
-        const gl = glCanvas.getContext('webgl2') || glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl');
+    const container = document.getElementById('card-hardware-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Logical CPU Concurrency', AuditState.hardware.cpuCores, 'Hardware core count classification.', 'High'),
+        createRow('Device Memory Tier', AuditState.hardware.deviceMemory, 'Reported RAM class.', 'Medium'),
+        createRow('Max Touch Contacts', AuditState.hardware.maxTouchPoints, 'Hardware multi-touch limit.', 'Medium'),
+        createRow('Touch Input Active', AuditState.hardware.touchSupport, 'Touchscreen hardware support.', 'Low'),
+        createRow('Battery Status API', AuditState.hardware.battery, 'Battery charge percentage inspection.', 'Medium'),
+        createRow('Network Interface Type', AuditState.hardware.networkType, 'Network Information API bandwidth.', 'Medium')
+      ].join('');
+    }
+  }
 
-        if (gl) {
-          glVersion = gl.getParameter(gl.VERSION);
-          maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-          const ext = gl.getExtension('WEBGL_debug_renderer_info');
-          if (ext) {
-            unmaskedVendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || 'Unknown';
-            unmaskedRenderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'Unknown';
-          }
-          const extensions = gl.getSupportedExtensions() || [];
-          extCount = extensions.length;
+  // 4. Time & Locale
+  function auditLocale() {
+    const intl = Intl.DateTimeFormat().resolvedOptions();
+    const d = new Date();
+    const timezoneOffset = d.getTimezoneOffset();
+    const offsetHours = -(timezoneOffset / 60);
+    const offsetStr = `UTC${offsetHours >= 0 ? '+' : ''}${offsetHours}:00 (${timezoneOffset} mins)`;
 
-          gl.clearColor(0.2, 0.4, 0.6, 1.0);
-          gl.clear(gl.COLOR_BUFFER_BIT);
-          const glData = glCanvas.toDataURL();
-          webglHash = await computeSha256(glData + unmaskedRenderer);
+    let currencyTest = 'Failed';
+    try {
+      currencyTest = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(12345.67);
+    } catch (e) {}
+
+    AuditState.locale = {
+      timeZone: intl.timeZone || 'Unknown',
+      offset: offsetStr,
+      calendar: intl.calendar || 'gregory',
+      numberingSystem: intl.numberingSystem || 'latn',
+      sampleFormat: currencyTest
+    };
+
+    const container = document.getElementById('card-locale-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Geographical Time Zone', AuditState.locale.timeZone, 'Intl API regional zone.', 'Medium'),
+        createRow('UTC Time Offset', AuditState.locale.offset, 'Delta between system time and UTC.', 'Medium'),
+        createRow('System Calendar Type', AuditState.locale.calendar, 'Operating system default calendar.', 'Low'),
+        createRow('Numbering Glyphs', AuditState.locale.numberingSystem, 'Digit glyph numbering layout.', 'Low'),
+        createRow('Currency Formatting', AuditState.locale.sampleFormat, 'Regional comma and period separation.', 'Low')
+      ].join('');
+    }
+  }
+
+  // 5. Canvas Render
+  async function auditCanvas() {
+    const canvas = document.getElementById('canvas-fingerprint-preview') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.textBaseline = 'top';
+    ctx.font = "14px -apple-system, sans-serif";
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(5, 5, 55, 18);
+    ctx.fillStyle = '#069';
+    ctx.fillText('FingerprintGuard', 6, 18);
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+    ctx.fillText('Canvas 2.0', 8, 30);
+
+    const rad = ctx.createRadialGradient(85, 18, 2, 85, 18, 14);
+    rad.addColorStop(0, '#00d2f0');
+    rad.addColorStop(1, '#690005');
+    ctx.fillStyle = rad;
+    ctx.beginPath();
+    ctx.arc(85, 18, 12, 0, Math.PI * 2, true);
+    ctx.fill();
+
+    const dataUrl = canvas.toDataURL();
+    const hash = await computeSha256(dataUrl);
+
+    AuditState.canvas = {
+      hash: hash,
+      dataUrlLength: `${dataUrl.length} bytes`,
+      windingRule: ctx.isPointInPath(5, 5, 'evenodd') ? 'Supported' : 'Not Supported'
+    };
+
+    const container = document.getElementById('card-canvas-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Canvas SHA-256 Hash', hash.substring(0, 28) + '...', 'Produced by sub-pixel rasterization nuances.', 'Critical'),
+        createRow('Image Data Byte Size', AuditState.canvas.dataUrlLength, 'Base64 image buffer size.', 'Low'),
+        createRow('Winding Rule Support', AuditState.canvas.windingRule, 'Complex vector path calculation rule.', 'Low')
+      ].join('');
+    }
+  }
+
+  // 6. WebGL Graphics
+  async function auditWebGL() {
+    let unmaskedVendor = 'Hidden / Inaccessible';
+    let unmaskedRenderer = 'Hidden / Inaccessible';
+    let maxTexture = 'Unknown';
+    let glVersion = 'Not Supported';
+    let extCount = 0;
+    let webglHash = 'None';
+
+    try {
+      const glCanvas = document.createElement('canvas');
+      glCanvas.width = 64;
+      glCanvas.height = 64;
+      const gl = (glCanvas.getContext('webgl2') || glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl')) as any;
+
+      if (gl) {
+        glVersion = gl.getParameter(gl.VERSION);
+        maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        if (ext) {
+          unmaskedVendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || 'Unknown';
+          unmaskedRenderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'Unknown';
         }
-      } catch (e) {
-        unmaskedRenderer = 'Error or Blocked';
+        const extensions = gl.getSupportedExtensions() || [];
+        extCount = extensions.length;
+
+        gl.clearColor(0.2, 0.4, 0.6, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        const glData = glCanvas.toDataURL();
+        webglHash = await computeSha256(glData + unmaskedRenderer);
       }
-
-      AuditState.webgl = {
-        renderer: unmaskedRenderer,
-        vendor: unmaskedVendor,
-        version: glVersion,
-        maxTextureSize: maxTexture,
-        supportedExtensions: extCount,
-        renderHash: webglHash
-      };
-
-      const container = document.getElementById('card-webgl-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Physical GPU Hardware', unmaskedRenderer, 'Physical hardware model (NVIDIA, AMD, Apple M, Intel).', 'Critical'),
-          createRow('Graphics Driver Vendor', unmaskedVendor, 'Hardware vendor provider.', 'High'),
-          createRow('Max Texture Dimension', maxTexture, 'Maximum GPU texture buffer size.', 'Medium'),
-          createRow('Supported WebGL Exts', `${extCount} Extensions`, 'Graphics API capability array.', 'Medium'),
-          createRow('WebGL Specification', glVersion, 'Supported WebGL specification.', 'Low'),
-          createRow('WebGL Shader Hash', webglHash.substring(0, 24) + '...', 'GPU shader buffer render signature.', 'High')
-        ].join('');
-      }
-
-      const topGpu = document.getElementById('top-webgl-gpu');
-      if (topGpu) topGpu.textContent = unmaskedRenderer;
+    } catch (e) {
+      unmaskedRenderer = 'Error or Blocked';
     }
 
-    // 7. Audio Subsystem
-    async function auditAudio() {
-      let audioHash = 'API Unsupported';
-      let sampleRate = 'Unknown';
+    AuditState.webgl = {
+      renderer: unmaskedRenderer,
+      vendor: unmaskedVendor,
+      version: glVersion,
+      maxTextureSize: maxTexture,
+      supportedExtensions: extCount,
+      renderHash: webglHash
+    };
 
-      try {
-        const AudioCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-        if (AudioCtx) {
-          const context = new AudioCtx(1, 44100, 44100);
-          sampleRate = `${context.sampleRate} Hz`;
+    const container = document.getElementById('card-webgl-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Physical GPU Hardware', unmaskedRenderer, 'Physical hardware model (NVIDIA, AMD, Apple M, Intel).', 'Critical'),
+        createRow('Graphics Driver Vendor', unmaskedVendor, 'Hardware vendor provider.', 'High'),
+        createRow('Max Texture Dimension', maxTexture, 'Maximum GPU texture buffer size.', 'Medium'),
+        createRow('Supported WebGL Exts', `${extCount} Extensions`, 'Graphics API capability array.', 'Medium'),
+        createRow('WebGL Specification', glVersion, 'Supported WebGL specification.', 'Low'),
+        createRow('WebGL Shader Hash', webglHash.substring(0, 24) + '...', 'GPU shader buffer render signature.', 'High')
+      ].join('');
+    }
+  }
 
-          const oscillator = context.createOscillator();
-          oscillator.type = 'triangle';
-          oscillator.frequency.setValueAtTime(10000, context.currentTime);
+  // 7. Audio Subsystem
+  async function auditAudio() {
+    let audioHash = 'API Unsupported';
+    let sampleRate = 'Unknown';
 
-          const compressor = context.createDynamicsCompressor();
-          compressor.threshold.setValueAtTime(-50, context.currentTime);
-          compressor.knee.setValueAtTime(40, context.currentTime);
-          compressor.ratio.setValueAtTime(12, context.currentTime);
-          compressor.attack.setValueAtTime(0, context.currentTime);
-          compressor.release.setValueAtTime(0.25, context.currentTime);
+    try {
+      const AudioCtx = (window as any).OfflineAudioContext || (window as any).webkitOfflineAudioContext;
+      if (AudioCtx) {
+        const context = new AudioCtx(1, 44100, 44100);
+        sampleRate = `${context.sampleRate} Hz`;
 
-          oscillator.connect(compressor);
-          compressor.connect(context.destination);
-          oscillator.start(0);
+        const oscillator = context.createOscillator();
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(10000, context.currentTime);
 
-          const renderedBuffer = await context.startRendering();
-          const channelData = renderedBuffer.getChannelData(0);
+        const compressor = context.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-50, context.currentTime);
+        compressor.knee.setValueAtTime(40, context.currentTime);
+        compressor.ratio.setValueAtTime(12, context.currentTime);
+        compressor.attack.setValueAtTime(0, context.currentTime);
+        compressor.release.setValueAtTime(0.25, context.currentTime);
 
-          let sampleValues = [];
-          for (let i = 4500; i < 5000; i++) {
-            sampleValues.push(channelData[i]);
-          }
-          audioHash = await computeSha256(sampleValues.join(','));
+        oscillator.connect(compressor);
+        compressor.connect(context.destination);
+        oscillator.start(0);
+
+        const renderedBuffer = await context.startRendering();
+        const channelData = renderedBuffer.getChannelData(0);
+
+        let sampleValues = [];
+        for (let i = 4500; i < 5000; i++) {
+          sampleValues.push(channelData[i]);
         }
-      } catch (e) {
-        audioHash = 'Blocked / Security Error';
+        audioHash = await computeSha256(sampleValues.join(','));
       }
-
-      AuditState.audio = {
-        hash: audioHash,
-        sampleRate: sampleRate
-      };
-
-      const container = document.getElementById('card-audio-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Audio DSP Output Hash', audioHash.substring(0, 28) + '...', 'Audio chip DSP floating-point calculation deviation.', 'Critical'),
-          createRow('Sampling Frequency', sampleRate, 'Default sound card sample rate.', 'Low')
-        ].join('');
-      }
-
-      const topAudio = document.getElementById('top-audio-hash');
-      if (topAudio) topAudio.textContent = audioHash.substring(0, 12) + '...';
+    } catch (e) {
+      audioHash = 'Blocked / Security Error';
     }
 
-    // 8. Fonts Detection
-    async function auditFonts() {
-      const testFonts = [
-        'Arial', 'Arial Black', 'Calibri', 'Cambria', 'Comic Sans MS', 'Consolas', 'Courier', 'Courier New',
-        'Georgia', 'Helvetica', 'Impact', 'Lucida Console', 'Lucida Sans Unicode', 'Microsoft Sans Serif',
-        'Palatino Linotype', 'Segoe UI', 'Tahoma', 'Times', 'Times New Roman', 'Trebuchet MS', 'Verdana',
-        'Monaco', 'Menlo', 'Apple Color Emoji', 'Ubuntu', 'Ubuntu Mono', 'Roboto', 'Open Sans', 'Lato',
-        'Montserrat', 'Source Code Pro', 'SF Pro Text', 'San Francisco', 'Cascadia Code', 'Fira Code',
-        'Droid Sans', 'Century Gothic', 'Franklin Gothic Medium', 'Gill Sans', 'MS PGothic', 'SimSun'
-      ];
+    AuditState.audio = {
+      hash: audioHash,
+      sampleRate: sampleRate
+    };
 
-      const baseFonts = ['monospace', 'sans-serif', 'serif'];
-      const testString = 'mmmmmmmmmmlliwwwwwwwwwWWWWWW00000000';
-      const testSize = '72px';
-      const body = document.body;
+    const container = document.getElementById('card-audio-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Audio DSP Output Hash', audioHash.substring(0, 28) + '...', 'Audio chip DSP floating-point calculation deviation.', 'Critical'),
+        createRow('Sampling Frequency', sampleRate, 'Default sound card sample rate.', 'Low')
+      ].join('');
+    }
+  }
 
-      const span = document.createElement('span');
-      span.style.position = 'absolute';
-      span.style.left = '-9999px';
-      span.style.fontSize = testSize;
-      span.style.visibility = 'hidden';
-      span.textContent = testString;
-      body.appendChild(span);
+  // 8. Fonts Detection
+  async function auditFonts() {
+    const testFonts = [
+      'Arial', 'Arial Black', 'Calibri', 'Cambria', 'Comic Sans MS', 'Consolas', 'Courier', 'Courier New',
+      'Georgia', 'Helvetica', 'Impact', 'Lucida Console', 'Lucida Sans Unicode', 'Microsoft Sans Serif',
+      'Palatino Linotype', 'Segoe UI', 'Tahoma', 'Times', 'Times New Roman', 'Trebuchet MS', 'Verdana',
+      'Monaco', 'Menlo', 'Apple Color Emoji', 'Ubuntu', 'Ubuntu Mono', 'Roboto', 'Open Sans', 'Lato',
+      'Montserrat', 'Source Code Pro', 'SF Pro Text', 'San Francisco', 'Cascadia Code', 'Fira Code',
+      'Droid Sans', 'Century Gothic', 'Franklin Gothic Medium', 'Gill Sans', 'MS PGothic', 'SimSun'
+    ];
 
-      const defaultWidths = {};
+    const baseFonts = ['monospace', 'sans-serif', 'serif'];
+    const testString = 'mmmmmmmmmmlliwwwwwwwwwWWWWWW00000000';
+    const testSize = '72px';
+    const body = document.body;
+
+    const span = document.createElement('span');
+    span.style.position = 'absolute';
+    span.style.left = '-9999px';
+    span.style.fontSize = testSize;
+    span.style.visibility = 'hidden';
+    span.textContent = testString;
+    body.appendChild(span);
+
+    const defaultWidths: Record<string, number> = {};
+    for (const base of baseFonts) {
+      span.style.fontFamily = base;
+      defaultWidths[base] = span.offsetWidth;
+    }
+
+    const detectedFonts: string[] = [];
+    for (const font of testFonts) {
+      let isPresent = false;
       for (const base of baseFonts) {
-        span.style.fontFamily = base;
-        defaultWidths[base] = span.offsetWidth;
+        span.style.fontFamily = `'${font}', ${base}`;
+        if (span.offsetWidth !== defaultWidths[base]) {
+          isPresent = true;
+          break;
+        }
       }
+      if (isPresent) detectedFonts.push(font);
+    }
+    body.removeChild(span);
 
-      const detectedFonts = [];
-      for (const font of testFonts) {
-        let isPresent = false;
-        for (const base of baseFonts) {
-          span.style.fontFamily = `'${font}', ${base}`;
-          if (span.offsetWidth !== defaultWidths[base]) {
-            isPresent = true;
-            break;
+    AuditState.fonts = {
+      detectedCount: detectedFonts.length,
+      detectedList: detectedFonts.join(', ') || 'Standard Web Fonts Only'
+    };
+
+    const container = document.getElementById('card-fonts-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Installed Fonts Detected', `${detectedFonts.length} Fonts (from 40 Tested)`, 'Installed system fonts narrow OS and user tier.', 'High'),
+        createRow('First Detected Fonts', detectedFonts.slice(0, 8).join(', ') + (detectedFonts.length > 8 ? ' ...' : ''), 'Subset of detected installed fonts.', 'Medium')
+      ].join('');
+    }
+
+    const metricFonts = document.getElementById('metric-fonts-found');
+    if (metricFonts) metricFonts.textContent = `${detectedFonts.length} Fonts`;
+  }
+
+  // 9. WebRTC Leak
+  function auditWebRTC() {
+    let localIps: string[] = [];
+    let mdnsCandidates: string[] = [];
+
+    try {
+      const RTCPeer = (window as any).RTCPeerConnection || (window as any).mozRTCPeerConnection || (window as any).webkitRTCPeerConnection;
+      if (!RTCPeer) {
+        updateWebRTCRows('WebRTC API Not Supported', [], []);
+        return;
+      }
+      const pc = new RTCPeer({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+      pc.createDataChannel('');
+      pc.createOffer().then((offer: any) => pc.setLocalDescription(offer)).catch(() => {});
+
+      pc.onicecandidate = function(e: any) {
+        if (!e || !e.candidate) {
+          if (localIps.length === 0 && mdnsCandidates.length === 0) {
+            updateWebRTCRows('No Leaks (mDNS Masking Active)', [], []);
+          }
+          return;
+        }
+        const cand = e.candidate.candidate;
+        // Accurate IPv4 match pattern
+        const ipMatch = /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/.exec(cand);
+        if (ipMatch) {
+          const foundIp = ipMatch[0];
+          if (!localIps.includes(foundIp)) localIps.push(foundIp);
+        }
+        if (cand.includes('.local')) {
+          const mdnsMatch = /([a-f0-9-]+\.local)/.exec(cand);
+          if (mdnsMatch && !mdnsCandidates.includes(mdnsMatch[1])) {
+            mdnsCandidates.push(mdnsMatch[1]);
           }
         }
-        if (isPresent) detectedFonts.push(font);
-      }
-      body.removeChild(span);
-
-      AuditState.fonts = {
-        detectedCount: detectedFonts.length,
-        detectedList: detectedFonts.join(', ') || 'Standard Web Fonts Only'
+        updateWebRTCRows('Candidates Analyzed', localIps, mdnsCandidates);
       };
 
-      const container = document.getElementById('card-fonts-rows');
+      setTimeout(() => {
+        if (localIps.length === 0 && mdnsCandidates.length === 0) {
+          updateWebRTCRows('WebRTC Protected by mDNS', [], []);
+        }
+      }, 2500);
+
+    } catch (e) {
+      updateWebRTCRows('WebRTC Disabled or Blocked', [], []);
+    }
+
+    function updateWebRTCRows(status: string, ips: string[], mdns: string[]) {
+      AuditState.webrtc = {
+        status: status,
+        leakedIps: ips.join(', ') || 'No Direct Local IP Leak',
+        mdnsMasks: mdns.join(', ') || 'Standard GUID Masking'
+      };
+
+      const container = document.getElementById('card-webrtc-rows');
       if (container) {
         container.innerHTML = [
-          createRow('Installed Fonts Detected', `${detectedFonts.length} Fonts (from 40 Tested)`, 'Installed system fonts narrow OS and user tier.', 'High'),
-          createRow('First Detected Fonts', detectedFonts.slice(0, 8).join(', ') + (detectedFonts.length > 8 ? ' ...' : ''), 'Subset of detected installed fonts.', 'Medium')
+          createRow('WebRTC ICE Candidate Status', status, 'WebRTC candidate reflection status.', ips.length > 0 ? 'Critical' : 'Low'),
+          createRow('Private Local Subnet IP', AuditState.webrtc.leakedIps, 'Private IP address that could bypass VPN tunnels.', ips.length > 0 ? 'Critical' : 'Low'),
+          createRow('mDNS Masking Mechanism', AuditState.webrtc.mdnsMasks, 'Chromium random GUID protection mechanism.', 'Low')
         ].join('');
       }
-
-      const metricFonts = document.getElementById('metric-fonts-found');
-      if (metricFonts) metricFonts.textContent = `${detectedFonts.length} Fonts`;
-      const topFont = document.getElementById('top-font-count');
-      if (topFont) topFont.textContent = `${detectedFonts.length} fonts`;
     }
+  }
 
-    // 9. WebRTC Leak
-    function auditWebRTC() {
-      let localIps = [];
-      let mdnsCandidates = [];
+  // 10. External Network IP (Zero Egress)
+  function auditNetworkDefault() {
+    AuditState.network = {
+      publicIp: 'Not Queried (100% Local Guarantee)',
+      policy: 'Zero-Egress Active'
+    };
 
-      try {
-        const pc = new (window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection)({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
-
-        pc.createDataChannel('');
-        pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
-
-        pc.onicecandidate = function(e) {
-          if (!e || !e.candidate) {
-            if (localIps.length === 0 && mdnsCandidates.length === 0) {
-              updateWebRTCRows('No Leaks (mDNS Masking Active)', [], []);
-            }
-            return;
-          }
-          const cand = e.candidate.candidate;
-          const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(cand);
-          if (ipMatch) {
-            const foundIp = ipMatch[1];
-            if (!localIps.includes(foundIp)) localIps.push(foundIp);
-          }
-          if (cand.includes('.local')) {
-            const mdnsMatch = /([a-f0-9-]+\.local)/.exec(cand);
-            if (mdnsMatch && !mdnsCandidates.includes(mdnsMatch[1])) {
-              mdnsCandidates.push(mdnsMatch[1]);
-            }
-          }
-          updateWebRTCRows('Candidates Analyzed', localIps, mdnsCandidates);
-        };
-
-        setTimeout(() => {
-          if (localIps.length === 0 && mdnsCandidates.length === 0) {
-            updateWebRTCRows('WebRTC Protected by mDNS', [], []);
-          }
-        }, 2000);
-
-      } catch (e) {
-        updateWebRTCRows('WebRTC Disabled or Blocked', [], []);
-      }
-
-      function updateWebRTCRows(status, ips, mdns) {
-        AuditState.webrtc = {
-          status: status,
-          leakedIps: ips.join(', ') || 'No Direct Local IP Leak',
-          mdnsMasks: mdns.join(', ') || 'Standard GUID Masking'
-        };
-
-        const container = document.getElementById('card-webrtc-rows');
-        if (container) {
-          container.innerHTML = [
-            createRow('WebRTC ICE Candidate Status', status, 'WebRTC candidate reflection status.', ips.length > 0 ? 'Critical' : 'Low'),
-            createRow('Private Local Subnet IP', AuditState.webrtc.leakedIps, 'Private IP address that could bypass VPN tunnels.', ips.length > 0 ? 'Critical' : 'Low'),
-            createRow('mDNS Masking Mechanism', AuditState.webrtc.mdnsMasks, 'Chromium random GUID protection mechanism.', 'Low')
-          ].join('');
-        }
-      }
+    const container = document.getElementById('card-network-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Public IP Address', 'Not Queried (100% Local)', 'No external network requests until clicked.', 'Low'),
+        createRow('Egress Architecture', 'Strict Zero-Egress Policy', 'Page executes in local browser isolation.', 'Low')
+      ].join('');
     }
+  }
 
-    // 10. External Network IP (Zero Egress)
-    function auditNetworkDefault() {
-      AuditState.network = {
-        publicIp: 'Not Queried (100% Local Guarantee)',
-        policy: 'Zero-Egress Active'
-      };
+  async function requestPublicIp() {
+    const btn = document.getElementById('btn-request-ip') as HTMLButtonElement | null;
+    if (!btn) return;
+    btn.textContent = 'Querying...';
+    btn.disabled = true;
+
+    try {
+      const resp = await fetch('https://api.ipify.org?format=json');
+      const data = await resp.json();
+      AuditState.network.publicIp = data.ip || 'Unknown';
 
       const container = document.getElementById('card-network-rows');
       if (container) {
         container.innerHTML = [
-          createRow('Public IP Address', 'Not Queried (100% Local)', 'No external network requests until clicked.', 'Low'),
-          createRow('Egress Architecture', 'Strict Zero-Egress Policy', 'Page executes in local browser isolation.', 'Low')
+          createRow('Public IP Address', data.ip, 'Source IP address visible to external servers.', 'Critical'),
+          createRow('Query Source', 'Direct Client Fetch (api.ipify.org)', 'Fetched upon your explicit request.', 'Medium')
         ].join('');
       }
+      btn.textContent = 'IP Updated';
+    } catch (e) {
+      btn.textContent = 'Connection Blocked';
+    }
+  }
+
+  // 11. Storage & APIs
+  async function auditStorageAndAPIs() {
+    const nav = navigator as any;
+    const hasLocalStorage = !!window.localStorage;
+    const hasSessionStorage = !!window.sessionStorage;
+    const hasIndexedDB = !!window.indexedDB;
+    const hasCache = 'caches' in window;
+    const hasSW = 'serviceWorker' in nav;
+    const hasWasm = typeof WebAssembly === 'object';
+    const hasWebGPU = 'gpu' in nav;
+    const hasBluetooth = 'bluetooth' in nav;
+    const hasUSB = 'usb' in nav;
+
+    let notifPerm = 'Unknown';
+    if ('Notification' in window) {
+      notifPerm = Notification.permission;
     }
 
-    async function requestPublicIp() {
-      const btn = document.getElementById('btn-request-ip');
-      if (!btn) return;
-      btn.textContent = 'Querying...';
-      btn.disabled = true;
+    AuditState.storage = {
+      storageEngines: `LS: ${hasLocalStorage ? 'Yes' : 'No'} | SS: ${hasSessionStorage ? 'Yes' : 'No'} | IDB: ${hasIndexedDB ? 'Yes' : 'No'}`,
+      cacheAndSW: `Cache API: ${hasCache ? 'Yes' : 'No'} | ServiceWorker: ${hasSW ? 'Yes' : 'No'}`,
+      webAssembly: hasWasm ? 'Supported' : 'Not Supported',
+      webGPU: hasWebGPU ? 'Available (Next-Gen 3D)' : 'Not Supported',
+      hardwareBridges: `BT: ${hasBluetooth ? 'Yes' : 'No'} | USB: ${hasUSB ? 'Yes' : 'No'}`,
+      notificationPermission: notifPerm
+    };
 
-      try {
-        const resp = await fetch('https://api.ipify.org?format=json');
-        const data = await resp.json();
-        AuditState.network.publicIp = data.ip || 'Unknown';
-
-        const container = document.getElementById('card-network-rows');
-        if (container) {
-          container.innerHTML = [
-            createRow('Public IP Address', data.ip, 'Source IP address visible to external servers.', 'Critical'),
-            createRow('Query Source', 'Direct Client Fetch (api.ipify.org)', 'Fetched upon your explicit request.', 'Medium')
-          ].join('');
-        }
-        btn.textContent = 'IP Updated';
-      } catch (e) {
-        btn.textContent = 'Connection Blocked';
-      }
-    }
-
-    // 11. Storage & APIs
-    async function auditStorageAndAPIs() {
-      const nav = navigator;
-      const hasLocalStorage = !!window.localStorage;
-      const hasSessionStorage = !!window.sessionStorage;
-      const hasIndexedDB = !!window.indexedDB;
-      const hasCache = 'caches' in window;
-      const hasSW = 'serviceWorker' in nav;
-      const hasWasm = typeof WebAssembly === 'object';
-      const hasWebGPU = 'gpu' in nav;
-      const hasBluetooth = 'bluetooth' in nav;
-      const hasUSB = 'usb' in nav;
-
-      let notifPerm = 'Unknown';
-      if ('Notification' in window) {
-        notifPerm = Notification.permission;
-      }
-
-      AuditState.storage = {
-        storageEngines: `LS: ${hasLocalStorage ? 'Yes' : 'No'} | SS: ${hasSessionStorage ? 'Yes' : 'No'} | IDB: ${hasIndexedDB ? 'Yes' : 'No'}`,
-        cacheAndSW: `Cache API: ${hasCache ? 'Yes' : 'No'} | ServiceWorker: ${hasSW ? 'Yes' : 'No'}`,
-        webAssembly: hasWasm ? 'Supported' : 'Not Supported',
-        webGPU: hasWebGPU ? 'Available (Next-Gen 3D)' : 'Not Supported',
-        hardwareBridges: `BT: ${hasBluetooth ? 'Yes' : 'No'} | USB: ${hasUSB ? 'Yes' : 'No'}`,
-        notificationPermission: notifPerm
-      };
-
-      const container = document.getElementById('card-storage-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Storage Engines', AuditState.storage.storageEngines, 'Availability of localStorage and IndexedDB.', 'Low'),
-          createRow('Offline Cache & SW', AuditState.storage.cacheAndSW, 'Background offline storage capabilities.', 'Low'),
-          createRow('WebAssembly (WASM)', AuditState.storage.webAssembly, 'High-performance binary execution runtime.', 'Low'),
-          createRow('WebGPU Low-Level API', AuditState.storage.webGPU, 'Next-generation direct GPU interface.', 'Medium'),
-          createRow('Hardware Bridges (BT/USB)', AuditState.storage.hardwareBridges, 'Web Bluetooth & WebUSB access capability.', 'Medium'),
-          createRow('Push Notification Perm', AuditState.storage.notificationPermission, 'Push notification permission status.', 'Low')
-        ].join('');
-      }
-    }
-
-    // 12. Media Codecs
-    function auditCodecs() {
-      const nav = navigator;
-      let pluginCount = nav.plugins ? nav.plugins.length : 0;
-      const video = document.createElement('video');
-      const audio = document.createElement('audio');
-
-      const canH264 = video.canPlayType('video/mp4; codecs="avc1.42E01E"') || 'no';
-      const canVP9  = video.canPlayType('video/webm; codecs="vp9"') || 'no';
-      const canAV1  = video.canPlayType('video/mp4; codecs="av01.0.08M.08"') || 'no';
-      const canAAC  = audio.canPlayType('audio/aac') || 'no';
-      const canOpus = audio.canPlayType('audio/ogg; codecs="opus"') || 'no';
-      const hasEME = 'requestMediaKeySystemAccess' in nav ? 'Supported (DRM)' : 'None';
-
-      AuditState.codecs = {
-        plugins: `${pluginCount} Plugins`,
-        videoCodecs: `H.264: ${canH264 || 'No'} | VP9: ${canVP9 || 'No'} | AV1: ${canAV1 || 'No'}`,
-        audioCodecs: `AAC: ${canAAC || 'No'} | Opus: ${canOpus || 'No'}`,
-        emeSupport: hasEME
-      };
-
-      const container = document.getElementById('card-codecs-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Internal Plugins Array', `${pluginCount} Plugins Reported`, 'navigator.plugins length.', 'Low'),
-          createRow('Video Decoding Capabilities', AuditState.codecs.videoCodecs, 'Operating system licensed codecs.', 'Medium'),
-          createRow('Audio Playback Codecs', AuditState.codecs.audioCodecs, 'AAC and Opus decoder playback.', 'Low'),
-          createRow('Encrypted Media DRM (EME)', AuditState.codecs.emeSupport, 'Copy protection playback API support.', 'Medium')
-        ].join('');
-      }
-    }
-
-    // 13. Behavioral Dynamics
-    function initBehaviorTracking() {
-      window.addEventListener('mousemove', () => {
-        AuditState.behavior.mouseMoves++;
-        updateBehaviorUI();
-      }, { passive: true });
-
-      window.addEventListener('click', () => {
-        AuditState.behavior.clicks++;
-        updateBehaviorUI();
-      });
-
-      window.addEventListener('keydown', () => {
-        AuditState.behavior.keyStrokes++;
-        updateBehaviorUI();
-      });
-
-      let lastY = window.scrollY;
-      window.addEventListener('scroll', () => {
-        AuditState.behavior.scrollDistance += Math.abs(window.scrollY - lastY);
-        lastY = window.scrollY;
-        updateBehaviorUI();
-      }, { passive: true });
-
-      window.addEventListener('focus', () => {
-        AuditState.behavior.focused = true;
-        updateBehaviorUI();
-      });
-
-      window.addEventListener('blur', () => {
-        AuditState.behavior.focused = false;
-        updateBehaviorUI();
-      });
-
-      updateBehaviorUI();
-    }
-
-    function updateBehaviorUI() {
-      const container = document.getElementById('card-behavior-rows');
-      if (!container) return;
+    const container = document.getElementById('card-storage-rows');
+    if (container) {
       container.innerHTML = [
-        createRow('Pointer Trajectory Events', `${AuditState.behavior.mouseMoves} Events`, 'Trackers inspect cursor curves for bot detection.', 'Low'),
-        createRow('User Click Count', `${AuditState.behavior.clicks} Clicks`, 'Mouse and touch tap count.', 'Low'),
-        createRow('Keystroke Rhythm Count', `${AuditState.behavior.keyStrokes} Strokes`, 'Typing cadences form biometric timing traces.', 'Low'),
-        createRow('Viewport Scroll Distance', `${Math.round(AuditState.behavior.scrollDistance)} px`, 'Total traversed pixel scroll height.', 'Low'),
-        createRow('Tab Window Focus State', AuditState.behavior.focused ? 'Active (Focused)' : 'Background (Blurred)', 'Whether the tab is actively visible.', 'Low')
+        createRow('Storage Engines', AuditState.storage.storageEngines, 'Availability of localStorage and IndexedDB.', 'Low'),
+        createRow('Offline Cache & SW', AuditState.storage.cacheAndSW, 'Background offline storage capabilities.', 'Low'),
+        createRow('WebAssembly (WASM)', AuditState.storage.webAssembly, 'High-performance binary execution runtime.', 'Low'),
+        createRow('WebGPU Low-Level API', AuditState.storage.webGPU, 'Next-generation direct GPU interface.', 'Medium'),
+        createRow('Hardware Bridges (BT/USB)', AuditState.storage.hardwareBridges, 'Web Bluetooth & WebUSB access capability.', 'Medium'),
+        createRow('Push Notification Perm', AuditState.storage.notificationPermission, 'Push notification permission status.', 'Low')
+      ].join('');
+    }
+  }
+
+  // 12. Media Codecs
+  function auditCodecs() {
+    const nav = navigator as any;
+    let pluginCount = nav.plugins ? nav.plugins.length : 0;
+    const video = document.createElement('video');
+    const audio = document.createElement('audio');
+
+    const canH264 = video.canPlayType('video/mp4; codecs="avc1.42E01E"') || 'no';
+    const canVP9  = video.canPlayType('video/webm; codecs="vp9"') || 'no';
+    const canAV1  = video.canPlayType('video/mp4; codecs="av01.0.08M.08"') || 'no';
+    const canAAC  = audio.canPlayType('audio/aac') || 'no';
+    const canOpus = audio.canPlayType('audio/ogg; codecs="opus"') || 'no';
+    const hasEME = 'requestMediaKeySystemAccess' in nav ? 'Supported (DRM)' : 'None';
+
+    AuditState.codecs = {
+      plugins: `${pluginCount} Plugins`,
+      videoCodecs: `H.264: ${canH264 || 'No'} | VP9: ${canVP9 || 'No'} | AV1: ${canAV1 || 'No'}`,
+      audioCodecs: `AAC: ${canAAC || 'No'} | Opus: ${canOpus || 'No'}`,
+      emeSupport: hasEME
+    };
+
+    const container = document.getElementById('card-codecs-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Internal Plugins Array', `${pluginCount} Plugins Reported`, 'navigator.plugins length.', 'Low'),
+        createRow('Video Decoding Capabilities', AuditState.codecs.videoCodecs, 'Operating system licensed codecs.', 'Medium'),
+        createRow('Audio Playback Codecs', AuditState.codecs.audioCodecs, 'AAC and Opus decoder playback.', 'Low'),
+        createRow('Encrypted Media DRM (EME)', AuditState.codecs.emeSupport, 'Copy protection playback API support.', 'Medium')
+      ].join('');
+    }
+  }
+
+  // 13. Behavioral Dynamics
+  function initBehaviorTracking() {
+    window.addEventListener('mousemove', () => {
+      AuditState.behavior.mouseMoves++;
+      updateBehaviorUI();
+    }, { passive: true });
+
+    window.addEventListener('click', () => {
+      AuditState.behavior.clicks++;
+      updateBehaviorUI();
+    });
+
+    window.addEventListener('keydown', () => {
+      AuditState.behavior.keyStrokes++;
+      updateBehaviorUI();
+    });
+
+    let lastY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      AuditState.behavior.scrollDistance += Math.abs(window.scrollY - lastY);
+      lastY = window.scrollY;
+      updateBehaviorUI();
+    }, { passive: true });
+
+    window.addEventListener('focus', () => {
+      AuditState.behavior.focused = true;
+      updateBehaviorUI();
+    });
+
+    window.addEventListener('blur', () => {
+      AuditState.behavior.focused = false;
+      updateBehaviorUI();
+    });
+
+    updateBehaviorUI();
+  }
+
+  function updateBehaviorUI() {
+    const container = document.getElementById('card-behavior-rows');
+    if (!container) return;
+    container.innerHTML = [
+      createRow('Pointer Trajectory Events', `${AuditState.behavior.mouseMoves} Events`, 'Trackers inspect cursor curves for bot detection.', 'Low'),
+      createRow('User Click Count', `${AuditState.behavior.clicks} Clicks`, 'Mouse and touch tap count.', 'Low'),
+      createRow('Keystroke Rhythm Count', `${AuditState.behavior.keyStrokes} Strokes`, 'Typing cadences form biometric timing traces.', 'Low'),
+      createRow('Viewport Scroll Distance', `${Math.round(AuditState.behavior.scrollDistance)} px`, 'Total traversed pixel scroll height.', 'Low'),
+      createRow('Tab Window Focus State', AuditState.behavior.focused ? 'Active (Focused)' : 'Background (Blurred)', 'Whether the tab is actively visible.', 'Low')
+    ].join('');
+  }
+
+  // 14. Incognito & Shields
+  async function auditPrivacyAndAdblock() {
+    let isIncognito = 'Likely: Normal Session';
+    try {
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        const { quota } = await navigator.storage.estimate();
+        const quotaMB = (quota || 0) / (1024 * 1024);
+        if (quotaMB < 2000 && quotaMB > 0) {
+          isIncognito = 'Likely: Incognito Mode (Constrained Quota)';
+        }
+      }
+    } catch (e) {}
+
+    let adblockDetected = false;
+    const bait = document.createElement('div');
+    bait.className = 'adsbox ad-placement pub_300x250 text-ad textAd sponsor-banner';
+    bait.style.position = 'absolute';
+    bait.style.left = '-9999px';
+    bait.style.width = '1px';
+    bait.style.height = '1px';
+    document.body.appendChild(bait);
+
+    if (bait.offsetParent === null || bait.offsetHeight === 0 || bait.offsetWidth === 0 || window.getComputedStyle(bait).display === 'none') {
+      adblockDetected = true;
+    }
+    document.body.removeChild(bait);
+
+    let isBrave = false;
+    const nav = navigator as any;
+    if (nav.brave && typeof nav.brave.isBrave === 'function') {
+      isBrave = await nav.brave.isBrave();
+    }
+
+    AuditState.privacy = {
+      incognito: isIncognito,
+      adblocker: adblockDetected ? 'Detected (Active Filter Shield)' : 'Not Detected (Ads Allowed)',
+      braveBrowser: isBrave ? 'Yes (Brave Shields Active)' : 'No / Other Browser'
+    };
+
+    const container = document.getElementById('card-privacy-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Incognito Session Heuristic', AuditState.privacy.incognito, 'Storage quota heuristic estimation.', 'Medium'),
+        createRow('Ad & Tracker Blocker Status', AuditState.privacy.adblocker, 'Detection via bait CSS classes.', adblockDetected ? 'Low' : 'High'),
+        createRow('Brave Browser Shields', AuditState.privacy.braveBrowser, 'navigator.brave API inspection.', 'Low')
+      ].join('');
+    }
+  }
+
+  // 15. Consistency
+  function auditConsistency() {
+    const nav = navigator as any;
+    const result = checkConsistency({
+      userAgent: nav.userAgent,
+      platform: nav.platform,
+      maxTouchPoints: nav.maxTouchPoints,
+      isMobileUAData: nav.userAgentData ? nav.userAgentData.mobile : false,
+      screenWidth: window.screen.width,
+      screenAvailWidth: window.screen.availWidth
+    });
+
+    AuditState.consistency = {
+      status: result.statusText,
+      anomalies: result.anomalies.join('; ') || 'All hardware metrics correlate consistently with software declarations.'
+    };
+
+    const container = document.getElementById('card-consistency-rows');
+    if (container) {
+      container.innerHTML = [
+        createRow('Overall Integrity Rating', result.statusText, 'Coherence between hardware and software headers.', result.isConsistent ? 'Low' : 'Critical'),
+        createRow('Cross-Verification Report', AuditState.consistency.anomalies, 'Masking and fingerprint spoofing artifacts.', result.isConsistent ? 'Low' : 'Critical')
       ].join('');
     }
 
-    // 14. Incognito & Shields
-    async function auditPrivacyAndAdblock() {
-      let isIncognito = 'Likely: Normal Session';
-      try {
-        if ('storage' in navigator && 'estimate' in navigator.storage) {
-          const { quota } = await navigator.storage.estimate();
-          const quotaMB = quota / (1024 * 1024);
-          if (quotaMB < 2000 && quotaMB > 0) {
-            isIncognito = 'Likely: Incognito Mode (Constrained Quota)';
-          }
-        }
-      } catch (e) {}
-
-      let adblockDetected = false;
-      const bait = document.createElement('div');
-      bait.className = 'adsbox ad-placement pub_300x250 text-ad textAd sponsor-banner';
-      bait.style.position = 'absolute';
-      bait.style.left = '-9999px';
-      bait.style.width = '1px';
-      bait.style.height = '1px';
-      document.body.appendChild(bait);
-
-      if (bait.offsetParent === null || bait.offsetHeight === 0 || bait.offsetWidth === 0 || window.getComputedStyle(bait).display === 'none') {
-        adblockDetected = true;
-      }
-      document.body.removeChild(bait);
-
-      let isBrave = false;
-      if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
-        isBrave = await navigator.brave.isBrave();
-      }
-
-      AuditState.privacy = {
-        incognito: isIncognito,
-        adblocker: adblockDetected ? 'Detected (Active Filter Shield)' : 'Not Detected (Ads Allowed)',
-        braveBrowser: isBrave ? 'Yes (Brave Shields Active)' : 'No / Other Browser'
-      };
-
-      const container = document.getElementById('card-privacy-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Incognito Session Heuristic', AuditState.privacy.incognito, 'Storage quota heuristic estimation.', 'Medium'),
-          createRow('Ad & Tracker Blocker Status', AuditState.privacy.adblocker, 'Detection via bait CSS classes.', adblockDetected ? 'Low' : 'High'),
-          createRow('Brave Browser Shields', AuditState.privacy.braveBrowser, 'navigator.brave API inspection.', 'Low')
-        ].join('');
+    const badge = document.getElementById('metric-consistency-badge');
+    if (badge) {
+      if (!result.isConsistent) {
+        badge.textContent = 'Anomaly';
+        badge.className = 'text-lg font-bold font-mono text-[#f43f5e]';
+      } else {
+        badge.textContent = 'Clean';
+        badge.className = 'text-lg font-bold font-mono text-[#10b981]';
       }
     }
+  }
 
-    // 15. Consistency
-    function auditConsistency() {
-      const nav = navigator;
-      const ua = nav.userAgent.toLowerCase();
-      const plat = (nav.platform || '').toLowerCase();
-      const anomalies = [];
+  // EFF Entropy Calculation
+  function runUniquenessCalculation() {
+    const entropyResult = calculateEntropy({
+      hasCanvasHash: !!AuditState.canvas.hash,
+      webglRenderer: AuditState.webgl.renderer,
+      hasAudioHash: !!AuditState.audio.hash,
+      fontCount: AuditState.fonts.detectedCount || 0,
+      hasScreen: !!AuditState.screen.screenResolution,
+      hasHardware: !!AuditState.hardware.cpuCores
+    });
 
-      if (ua.includes('windows') && (plat.includes('mac') || plat.includes('iphone'))) {
-        anomalies.push('Critical: Declares Windows User-Agent but reports Mac/iOS platform!');
+    const metricBits = document.getElementById('metric-entropy-bits');
+    if (metricBits) metricBits.textContent = `${entropyResult.totalBits} bits`;
+
+    const circle = document.getElementById('uniqueness-gauge-circle') as SVGCircleElement | null;
+    const scoreVal = document.getElementById('gauge-score-value');
+    const title = document.getElementById('gauge-status-title');
+    const desc = document.getElementById('gauge-status-desc');
+
+    if (scoreVal) scoreVal.textContent = String(entropyResult.score);
+
+    if (circle) {
+      const circumference = 314.159;
+      const offset = circumference - (entropyResult.score / 100) * circumference;
+      circle.style.strokeDashoffset = String(offset);
+    }
+
+    const formattedPeople = new Intl.NumberFormat('en-US').format(entropyResult.oneInX);
+
+    if (title && desc) {
+      title.textContent = entropyResult.title;
+      if (entropyResult.level === 'critical') {
+        title.className = 'text-xs font-semibold text-[#f43f5e] block';
+        desc.textContent = `1 in ~${formattedPeople} users shares this configuration. Trackable without cookies.`;
+      } else if (entropyResult.level === 'moderate') {
+        title.className = 'text-xs font-semibold text-[#f59e0b] block';
+        desc.textContent = `Matches approximately 1 in ~${formattedPeople} users.`;
+      } else {
+        title.className = 'text-xs font-semibold text-[#10b981] block';
+        desc.textContent = `Your fingerprint blends into the most common browser pool.`;
       }
-      if (ua.includes('iphone') && plat.includes('linux') && !ua.includes('android')) {
-        anomalies.push('Critical: Declares iPhone User-Agent but reports Linux platform!');
-      }
-      if (nav.userAgentData && nav.userAgentData.mobile && nav.maxTouchPoints === 0) {
-        anomalies.push('Suspicious: Declares mobile device but reports 0 touch points!');
-      }
-      if (window.screen.width < window.screen.availWidth || window.screen.height < window.screen.availHeight) {
-        anomalies.push('Anomaly: Total screen dimensions are smaller than available workspace!');
-      }
+    }
+  }
 
-      const consistencyStatus = anomalies.length === 0 ? 'Fully Consistent (No Spoofing)' : `${anomalies.length} Anomaly Flags Detected!`;
+  // Filter Logic
+  function initFilters() {
+    const searchInput = document.getElementById('audit-search-input') as HTMLInputElement | null;
+    const pills = document.querySelectorAll('.category-pill');
+    const cards = document.querySelectorAll('.audit-card');
 
-      AuditState.consistency = {
-        status: consistencyStatus,
-        anomalies: anomalies.length > 0 ? anomalies.join('; ') : 'All hardware metrics correlate consistently with software declarations.'
-      };
+    let currentCategory = 'all';
 
-      const container = document.getElementById('card-consistency-rows');
-      if (container) {
-        container.innerHTML = [
-          createRow('Overall Integrity Rating', consistencyStatus, 'Coherence between hardware and software headers.', anomalies.length === 0 ? 'Low' : 'Critical'),
-          createRow('Cross-Verification Report', AuditState.consistency.anomalies, 'Masking and fingerprint spoofing artifacts.', anomalies.length === 0 ? 'Low' : 'Critical')
-        ].join('');
-      }
+    function filterCards() {
+      const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-      const badge = document.getElementById('metric-consistency-badge');
-      if (badge) {
-        if (anomalies.length > 0) {
-          badge.textContent = 'Anomaly';
-          badge.className = 'text-lg font-bold font-mono text-[#f43f5e]';
+      cards.forEach(card => {
+        const cat = card.getAttribute('data-category');
+        const text = card.textContent?.toLowerCase() || '';
+
+        const matchCat = (currentCategory === 'all' || cat === currentCategory);
+        const matchQuery = (!q || text.includes(q));
+
+        if (matchCat && matchQuery) {
+          card.classList.remove('hidden');
         } else {
-          badge.textContent = 'Clean';
-          badge.className = 'text-lg font-bold font-mono text-[#10b981]';
+          card.classList.add('hidden');
         }
-      }
-    }
-
-    // EFF Entropy Calculation
-    function calculateUniqueness() {
-      let entropyBits = 10.5;
-
-      if (AuditState.canvas.hash) entropyBits += 8.3;
-      if (AuditState.webgl.renderer && !AuditState.webgl.renderer.includes('Hidden') && !AuditState.webgl.renderer.includes('Unknown')) {
-        entropyBits += 7.2;
-      }
-      if (AuditState.audio.hash && !AuditState.audio.hash.includes('Error') && !AuditState.audio.hash.includes('Unsupported')) {
-        entropyBits += 5.4;
-      }
-      if (AuditState.fonts.detectedCount > 5) entropyBits += Math.min(AuditState.fonts.detectedCount * 0.4, 6.0);
-      if (AuditState.screen.screenResolution) entropyBits += 3.5;
-      if (AuditState.hardware.cpuCores) entropyBits += 2.0;
-
-      const totalBits = Math.min(Math.round(entropyBits * 10) / 10, 34.0);
-      const metricBits = document.getElementById('metric-entropy-bits');
-      if (metricBits) metricBits.textContent = `${totalBits} bits`;
-
-      const score = Math.min(Math.round((totalBits / 34.0) * 100), 99);
-
-      const circle = document.getElementById('uniqueness-gauge-circle');
-      const scoreVal = document.getElementById('gauge-score-value');
-      const title = document.getElementById('gauge-status-title');
-      const desc = document.getElementById('gauge-status-desc');
-
-      if (scoreVal) scoreVal.textContent = score;
-
-      if (circle) {
-        const circumference = 314.159;
-        const offset = circumference - (score / 100) * circumference;
-        circle.style.strokeDashoffset = offset;
-      }
-
-      const estimatedOneIn = Math.round(Math.pow(2, totalBits));
-      const formattedPeople = new Intl.NumberFormat('en-US').format(estimatedOneIn);
-
-      if (title && desc) {
-        if (score >= 80) {
-          title.textContent = 'High Identifiability';
-          title.className = 'text-xs font-semibold text-[#f43f5e] block';
-          desc.textContent = `1 in ~${formattedPeople} users shares this configuration. Trackable without cookies.`;
-        } else if (score >= 50) {
-          title.textContent = 'Moderate Uniqueness';
-          title.className = 'text-xs font-semibold text-[#f59e0b] block';
-          desc.textContent = `Matches approximately 1 in ~${formattedPeople} users.`;
-        } else {
-          title.textContent = 'Standard Profile';
-          title.className = 'text-xs font-semibold text-[#10b981] block';
-          desc.textContent = `Your fingerprint blends into the most common browser pool.`;
-        }
-      }
-    }
-
-    // Filter Logic
-    function initFilters() {
-      const searchInput = document.getElementById('audit-search-input');
-      const pills = document.querySelectorAll('.category-pill');
-      const cards = document.querySelectorAll('.audit-card');
-
-      let currentCategory = 'all';
-
-      function filterCards() {
-        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
-        cards.forEach(card => {
-          const cat = card.getAttribute('data-category');
-          const text = card.textContent.toLowerCase();
-
-          const matchCat = (currentCategory === 'all' || cat === currentCategory);
-          const matchQuery = (!q || text.includes(q));
-
-          if (matchCat && matchQuery) {
-            card.classList.remove('hidden');
-          } else {
-            card.classList.add('hidden');
-          }
-        });
-      }
-
-      if (searchInput) searchInput.addEventListener('input', filterCards);
-
-      pills.forEach(pill => {
-        pill.addEventListener('click', () => {
-          pills.forEach(p => {
-            p.classList.remove('bg-[#00d2f0]', 'text-[#041d24]', 'font-medium');
-            p.classList.add('text-[#9aa5be]');
-          });
-          pill.classList.remove('text-[#9aa5be]');
-          pill.classList.add('bg-[#00d2f0]', 'text-[#041d24]', 'font-medium');
-
-          currentCategory = pill.getAttribute('data-cat');
-          filterCards();
-        });
       });
     }
 
-    // Export Actions
-    function initExportActions() {
-      document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.row-copy-btn');
-        if (btn) {
-          const text = btn.getAttribute('data-copy');
-          navigator.clipboard.writeText(text);
-          const icon = btn.querySelector('.material-symbols-outlined');
+    if (searchInput) searchInput.addEventListener('input', filterCards);
+
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => {
+          p.classList.remove('bg-[#00d2f0]', 'text-[#041d24]', 'font-medium');
+          p.classList.add('text-[#9aa5be]');
+        });
+        pill.classList.remove('text-[#9aa5be]');
+        pill.classList.add('bg-[#00d2f0]', 'text-[#041d24]', 'font-medium');
+
+        currentCategory = pill.getAttribute('data-cat') || 'all';
+        filterCards();
+      });
+    });
+  }
+
+  // Export Actions
+  function initExportActions() {
+    document.addEventListener('click', (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const btn = target?.closest('.row-copy-btn');
+      if (btn) {
+        const text = btn.getAttribute('data-copy') || '';
+        navigator.clipboard.writeText(text);
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (icon) {
           const originalIcon = icon.textContent;
           icon.textContent = 'check';
           setTimeout(() => { icon.textContent = originalIcon; }, 1500);
         }
-      });
-
-      document.querySelectorAll('.copy-card-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const targetId = btn.getAttribute('data-target');
-          const el = document.getElementById(targetId);
-          if (el) {
-            navigator.clipboard.writeText(el.innerText);
-            const original = btn.textContent;
-            btn.textContent = 'Copied!';
-            setTimeout(() => { btn.textContent = original; }, 1500);
-          }
-        });
-      });
-
-      const mdBtn = document.getElementById('btn-copy-markdown');
-      if (mdBtn) {
-        mdBtn.addEventListener('click', () => {
-          let md = `# Browser Fingerprint Audit Report (FingerprintGuard)\n`;
-          md += `Date: ${new Date().toISOString()}\n\n`;
-          md += `## 1. Browser Core\n\`\`\`json\n${JSON.stringify(AuditState.browser, null, 2)}\n\`\`\`\n\n`;
-          md += `## 2. Screen & Window\n\`\`\`json\n${JSON.stringify(AuditState.screen, null, 2)}\n\`\`\`\n\n`;
-          md += `## 3. Hardware & Battery\n\`\`\`json\n${JSON.stringify(AuditState.hardware, null, 2)}\n\`\`\`\n\n`;
-          md += `## 4. Time & Locale\n\`\`\`json\n${JSON.stringify(AuditState.locale, null, 2)}\n\`\`\`\n\n`;
-          md += `## 5. Canvas Hash\n\`\`\`json\n${JSON.stringify(AuditState.canvas, null, 2)}\n\`\`\`\n\n`;
-          md += `## 6. WebGL GPU\n\`\`\`json\n${JSON.stringify(AuditState.webgl, null, 2)}\n\`\`\`\n\n`;
-          md += `## 7. Audio Hash\n\`\`\`json\n${JSON.stringify(AuditState.audio, null, 2)}\n\`\`\`\n\n`;
-          md += `## 8. Fonts\n\`\`\`json\n${JSON.stringify(AuditState.fonts, null, 2)}\n\`\`\`\n\n`;
-          md += `## 9. WebRTC\n\`\`\`json\n${JSON.stringify(AuditState.webrtc, null, 2)}\n\`\`\`\n\n`;
-          md += `## 10. Consistency\n\`\`\`json\n${JSON.stringify(AuditState.consistency, null, 2)}\n\`\`\`\n\n`;
-
-          navigator.clipboard.writeText(md);
-          alert('Full audit report copied to clipboard in Markdown format.');
-        });
       }
-
-      const jsonBtn = document.getElementById('btn-download-json');
-      if (jsonBtn) {
-        jsonBtn.addEventListener('click', () => {
-          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AuditState, null, 2));
-          const downloadAnchor = document.createElement('a');
-          downloadAnchor.setAttribute("href", dataStr);
-          downloadAnchor.setAttribute("download", `fingerprint-guard-${Date.now()}.json`);
-          document.body.appendChild(downloadAnchor);
-          downloadAnchor.click();
-          downloadAnchor.remove();
-        });
-      }
-
-      const rescanBtn = document.getElementById('btn-rescan-all');
-      if (rescanBtn) {
-        rescanBtn.addEventListener('click', () => {
-          runFullScan();
-        });
-      }
-
-      const ipBtn = document.getElementById('btn-request-ip');
-      if (ipBtn) {
-        ipBtn.addEventListener('click', requestPublicIp);
-      }
-    }
-
-    async function runFullScan() {
-      await auditBrowser();
-      auditScreen();
-      await auditHardware();
-      auditLocale();
-      await auditCanvas();
-      await auditWebGL();
-      await auditAudio();
-      await auditFonts();
-      auditWebRTC();
-      auditNetworkDefault();
-      await auditStorageAndAPIs();
-      auditCodecs();
-      await auditPrivacyAndAdblock();
-      auditConsistency();
-      calculateUniqueness();
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      initBehaviorTracking();
-      initFilters();
-      initExportActions();
-      runFullScan();
     });
 
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      initBehaviorTracking();
-      initFilters();
-      initExportActions();
-      runFullScan();
+    document.querySelectorAll('.copy-card-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const el = targetId ? document.getElementById(targetId) : null;
+        if (el) {
+          navigator.clipboard.writeText(el.innerText);
+          const original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = original; }, 1500);
+        }
+      });
+    });
+
+    const mdBtn = document.getElementById('btn-copy-markdown');
+    if (mdBtn) {
+      mdBtn.addEventListener('click', () => {
+        let md = `# Browser Fingerprint Audit Report (FingerprintGuard)\n`;
+        md += `Date: ${new Date().toISOString()}\n\n`;
+        md += `## 1. Browser Core\n\`\`\`json\n${JSON.stringify(AuditState.browser, null, 2)}\n\`\`\`\n\n`;
+        md += `## 2. Screen & Viewport\n\`\`\`json\n${JSON.stringify(AuditState.screen, null, 2)}\n\`\`\`\n\n`;
+        md += `## 3. Hardware & Battery\n\`\`\`json\n${JSON.stringify(AuditState.hardware, null, 2)}\n\`\`\`\n\n`;
+        md += `## 4. Time & Locale\n\`\`\`json\n${JSON.stringify(AuditState.locale, null, 2)}\n\`\`\`\n\n`;
+        md += `## 5. Canvas Hash\n\`\`\`json\n${JSON.stringify(AuditState.canvas, null, 2)}\n\`\`\`\n\n`;
+        md += `## 6. WebGL GPU\n\`\`\`json\n${JSON.stringify(AuditState.webgl, null, 2)}\n\`\`\`\n\n`;
+        md += `## 7. Audio Hash\n\`\`\`json\n${JSON.stringify(AuditState.audio, null, 2)}\n\`\`\`\n\n`;
+        md += `## 8. Fonts\n\`\`\`json\n${JSON.stringify(AuditState.fonts, null, 2)}\n\`\`\`\n\n`;
+        md += `## 9. WebRTC\n\`\`\`json\n${JSON.stringify(AuditState.webrtc, null, 2)}\n\`\`\`\n\n`;
+        md += `## 10. Consistency\n\`\`\`json\n${JSON.stringify(AuditState.consistency, null, 2)}\n\`\`\`\n\n`;
+
+        navigator.clipboard.writeText(md);
+        alert('Full audit report copied to clipboard in Markdown format.');
+      });
     }
-  })();
+
+    const jsonBtn = document.getElementById('btn-download-json');
+    if (jsonBtn) {
+      jsonBtn.addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AuditState, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `fingerprint-guard-${Date.now()}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      });
+    }
+
+    const rescanBtn = document.getElementById('btn-rescan-all');
+    if (rescanBtn) {
+      rescanBtn.addEventListener('click', () => {
+        runFullScan();
+      });
+    }
+
+    const ipBtn = document.getElementById('btn-request-ip');
+    if (ipBtn) {
+      ipBtn.addEventListener('click', requestPublicIp);
+    }
+  }
+
+  async function runFullScan() {
+    await auditBrowser();
+    auditScreen();
+    await auditHardware();
+    auditLocale();
+    await auditCanvas();
+    await auditWebGL();
+    await auditAudio();
+    await auditFonts();
+    auditWebRTC();
+    auditNetworkDefault();
+    await auditStorageAndAPIs();
+    auditCodecs();
+    await auditPrivacyAndAdblock();
+    auditConsistency();
+    runUniquenessCalculation();
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    initBehaviorTracking();
+    initFilters();
+    initExportActions();
+    runFullScan();
+  });
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initBehaviorTracking();
+    initFilters();
+    initExportActions();
+    runFullScan();
+  }
 </script>

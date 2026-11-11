@@ -1,7 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { computeSha256, calculateEntropy, checkConsistency } from '../src/lib/fingerprint-utils';
+import { computeSha256, calculateEntropy, checkConsistency, escapeHtml } from '../src/lib/fingerprint-utils';
 
 describe('Fingerprint Utility Suite', () => {
+
+  describe('escapeHtml (XSS Prevention)', () => {
+    it('escapes dangerous HTML script and element injections', () => {
+      const malicious = '<img src=x onerror=alert(document.domain)>';
+      const safe = escapeHtml(malicious);
+      expect(safe).not.toContain('<img');
+      expect(safe).not.toContain('>');
+      expect(safe).toBe('&lt;img src=x onerror=alert(document.domain)&gt;');
+    });
+
+    it('escapes quotes and ampersands properly', () => {
+      const input = '"hello" & \'world\'';
+      const safe = escapeHtml(input);
+      expect(safe).toBe('&quot;hello&quot; &amp; &#39;world&#39;');
+    });
+  });
 
   describe('computeSha256', () => {
     it('returns empty string when given empty input', async () => {
@@ -38,7 +54,7 @@ describe('Fingerprint Utility Suite', () => {
       expect(result.totalBits).toBeGreaterThan(30);
       expect(result.score).toBeGreaterThanOrEqual(80);
       expect(result.level).toBe('critical');
-      expect(result.title).toBe('Extremely Unique');
+      expect(result.title).toBe('High Identifiability');
       expect(result.oneInX).toBeGreaterThan(1000000);
     });
 
@@ -55,7 +71,7 @@ describe('Fingerprint Utility Suite', () => {
       expect(result.totalBits).toBe(10.5);
       expect(result.score).toBeLessThan(50);
       expect(result.level).toBe('safe');
-      expect(result.title).toBe('Concealed in the Crowd');
+      expect(result.title).toBe('Standard Profile');
     });
   });
 

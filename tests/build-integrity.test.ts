@@ -43,17 +43,15 @@ describe('Astro Build & DOM Integrity Tests', () => {
     expect(htmlContent).toContain('data-category="cat-consistency"');
   });
 
-  it('contains clean craftsmanship styling, Google Fonts, and Compliance Modals', () => {
+  it('contains zero third-party font egress and clean privacy modals', () => {
     const distHtmlPath = path.resolve(process.cwd(), 'dist/index.html');
     const htmlContent = fs.readFileSync(distHtmlPath, 'utf-8');
 
-    // Craftsmanship UI
-    expect(htmlContent).toContain('console-card');
-    expect(htmlContent).toContain('fonts.googleapis.com');
+    // PRIV-01 validation: No Google CDN request in static output
+    expect(htmlContent).not.toContain('fonts.googleapis.com');
+    expect(htmlContent).not.toContain('fonts.gstatic.com');
 
-    // Legal & Cookie Compliance components
-    expect(htmlContent).toContain('id="cookie-consent-banner"');
-    expect(htmlContent).toContain('id="cookie-settings-modal"');
+    // Privacy & Terms Modals
     expect(htmlContent).toContain('id="privacy-policy-modal"');
     expect(htmlContent).toContain('id="terms-modal"');
     expect(htmlContent).toContain('Privacy Policy');
