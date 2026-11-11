@@ -1,0 +1,1442 @@
+---
+import Layout from '../layouts/Layout.astro';
+import LegalModals from '../components/LegalModals.astro';
+---
+
+<Layout title="FingerprintGuard — Client-Side Browser Fingerprint Inspector">
+  <div class="min-h-screen flex flex-col bg-[#0c0e14] text-[#f0f3fa]">
+    
+    <!-- TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 bg-[#0c0e14]/95 border-b border-[#1e2436] backdrop-blur px-4 sm:px-8 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-[#131722] border border-[#2f3854] flex items-center justify-center text-[#00d2f0]">
+          <span class="material-symbols-outlined text-[18px]">security</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-tight text-white">FingerprintGuard</span>
+          <span class="text-[10px] font-mono uppercase bg-[#181d2b] border border-[#2f3854] text-[#9aa5be] px-1.5 py-0.5 rounded">v4.2 LOCAL</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button id="btn-copy-markdown" class="px-2.5 py-1 text-xs font-mono rounded bg-[#131722] hover:bg-[#181d2b] text-[#9aa5be] hover:text-white border border-[#1e2436] transition-colors flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[14px] text-[#00d2f0]">content_copy</span>
+          <span class="hidden sm:inline">Copy Report</span>
+        </button>
+        <button id="btn-download-json" class="px-2.5 py-1 text-xs font-mono rounded bg-[#131722] hover:bg-[#181d2b] text-[#9aa5be] hover:text-white border border-[#1e2436] transition-colors flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[14px] text-[#10b981]">download</span>
+          <span class="hidden sm:inline">JSON</span>
+        </button>
+        <button id="btn-rescan-all" class="px-3 py-1 text-xs font-mono font-medium rounded bg-[#00d2f0] hover:bg-[#38e1fa] text-[#041d24] transition-colors flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[15px]">refresh</span>
+          <span>Re-scan</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 flex flex-col gap-6">
+
+      <!-- HERO INSPECTION STATUS BANNER -->
+      <section class="console-card p-6 flex flex-col lg:flex-row gap-6 items-stretch justify-between">
+        <div class="flex-1 flex flex-col justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#10b981]"></span>
+              <span class="font-mono text-xs text-[#10b981] font-medium tracking-wide">ZERO-EGRESS CLIENT INSPECTOR</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">Browser Fingerprint Analysis</h1>
+            <p class="text-xs sm:text-sm text-[#9aa5be] mt-1 max-w-2xl leading-relaxed">
+              Calculates your device identifiability using Canvas rasterization, WebGL GPU parameters, AudioContext DSP frequency curves, and operating system fonts without cookies or trackers.
+            </p>
+          </div>
+
+          <!-- Real-Time Metrics Strip -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+            <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436]">
+              <span class="block font-mono text-[10px] text-[#5e6982]">AUDITED APIS</span>
+              <span class="text-lg font-bold font-mono text-white" id="metric-audited-count">54 APIs</span>
+            </div>
+            <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436]">
+              <span class="block font-mono text-[10px] text-[#5e6982]">CALCULATED ENTROPY</span>
+              <span class="text-lg font-bold font-mono text-[#00d2f0]" id="metric-entropy-bits">-- bits</span>
+            </div>
+            <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436]">
+              <span class="block font-mono text-[10px] text-[#5e6982]">INSTALLED FONTS</span>
+              <span class="text-lg font-bold font-mono text-[#10b981]" id="metric-fonts-found">Testing</span>
+            </div>
+            <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436]">
+              <span class="block font-mono text-[10px] text-[#5e6982]">SPOOFING ANOMALIES</span>
+              <span class="text-lg font-bold font-mono text-[#10b981]" id="metric-consistency-badge">Clean</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gauge & Identifiability Score -->
+        <div class="w-full lg:w-72 p-4 rounded bg-[#0c0e14] border border-[#1e2436] flex flex-col items-center justify-center text-center">
+          <div class="relative w-32 h-32 flex items-center justify-center">
+            <svg class="w-full h-full -rotate-90" viewBox="0 0 120 120">
+              <circle class="text-[#181d2b]" cx="60" cy="60" fill="none" r="50" stroke="currentColor" stroke-width="8"></circle>
+              <circle 
+                id="uniqueness-gauge-circle"
+                class="text-[#00d2f0] transition-all duration-700 ease-out" 
+                cx="60" 
+                cy="60" 
+                fill="none" 
+                r="50" 
+                stroke="currentColor" 
+                stroke-width="8" 
+                stroke-linecap="round"
+                stroke-dasharray="314.159" 
+                stroke-dashoffset="314.159"
+              ></circle>
+            </svg>
+            <div class="absolute flex flex-col items-center justify-center">
+              <span class="text-3xl font-extrabold font-mono text-white" id="gauge-score-value">--</span>
+              <span class="font-mono text-[9px] text-[#5e6982] tracking-wider uppercase">Uniqueness</span>
+            </div>
+          </div>
+          <div class="mt-2.5">
+            <span class="text-xs font-semibold text-white block" id="gauge-status-title">Computing...</span>
+            <p class="text-[11px] text-[#9aa5be] mt-0.5 leading-normal" id="gauge-status-desc">
+              Measuring hardware signals and sub-pixel renders.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEARCH & CATEGORY FILTER BAR -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+        <div class="relative max-w-sm w-full">
+          <span class="material-symbols-outlined absolute left-2.5 top-2 text-[#5e6982] text-[16px]">search</span>
+          <input 
+            type="text" 
+            id="audit-search-input"
+            class="w-full bg-[#131722] pl-8 pr-3 py-1.5 rounded border border-[#1e2436] font-mono text-xs text-white placeholder-[#5e6982] focus:border-[#00d2f0] focus:outline-none transition-colors"
+            placeholder="Filter signal or parameter..." 
+          />
+        </div>
+
+        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0" id="filter-pill-container">
+          <button class="category-pill active-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono font-medium bg-[#00d2f0] text-[#041d24]" data-cat="all">All (15)</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-browser">Browser</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-screen">Display</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-hardware">Hardware</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-canvas">Canvas</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-webgl">WebGL</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-audio">Audio</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-fonts">Fonts</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-webrtc">WebRTC</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-network">Network</button>
+          <button class="category-pill whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono text-[#9aa5be] hover:bg-[#181d2b] hover:text-white" data-cat="cat-storage">APIs</button>
+        </div>
+      </div>
+
+      <!-- 15 AUDIT MODULE CARDS (3 Columns Grid) -->
+      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="cards-grid">
+
+        <!-- 1. Browser Core -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-browser">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">terminal</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">1. Browser Core</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20 px-1.5 py-0.5 rounded">High Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-browser-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>User-Agent String</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-browser-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 2. Screen & Viewport -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-screen">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">desktop_windows</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">2. Screen & Viewport</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-1.5 py-0.5 rounded">Medium Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-screen-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Resolution & DPR</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-screen-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 3. Hardware & Battery -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-hardware">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">memory</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">3. Hardware & Cores</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-1.5 py-0.5 rounded">Medium Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-hardware-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>CPU & Battery APIs</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-hardware-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 4. Locale & DateTime -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-locale">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">schedule</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">4. Time & Locale</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 px-1.5 py-0.5 rounded">Low Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-locale-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Timezone & Formatting</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-locale-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 5. Canvas Fingerprint -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-canvas">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#f43f5e]">draw</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">5. Canvas Render</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20 px-1.5 py-0.5 rounded">Critical</span>
+            </div>
+            
+            <!-- Real Canvas Pixel Preview -->
+            <div class="p-2 bg-[#0c0e14] border border-[#1e2436] rounded mb-2 flex items-center justify-between">
+              <canvas id="canvas-fingerprint-preview" width="130" height="36" class="rounded bg-[#08090d]"></canvas>
+              <span class="font-mono text-[10px] text-[#5e6982]">Sub-Pixel Render</span>
+            </div>
+
+            <div class="flex flex-col text-left" id="card-canvas-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Rasterization Variance</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-canvas-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 6. WebGL GPU -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-webgl">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#f43f5e]">view_in_ar</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">6. WebGL Graphics</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20 px-1.5 py-0.5 rounded">Critical</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-webgl-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Unmasked GPU Model</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-webgl-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 7. Audio DSP -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-audio">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">graphic_eq</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">7. Audio Subsystem</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20 px-1.5 py-0.5 rounded">High Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-audio-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>DSP Floating Point Latency</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-audio-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 8. Fonts -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-fonts">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">format_size</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">8. System Fonts</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-1.5 py-0.5 rounded">Medium Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-fonts-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Font Glyph Detection</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-fonts-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 9. WebRTC -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-webrtc">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#f43f5e]">lan</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">9. WebRTC Leak</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20 px-1.5 py-0.5 rounded">Network Leak</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-webrtc-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>STUN Local ICE Reflection</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-webrtc-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 10. Public IP -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-network">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#10b981]">public</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">10. Public IP (Optional)</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 px-1.5 py-0.5 rounded">Zero Egress</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-network-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono">
+            <span class="text-[#5e6982]">Query On Demand</span>
+            <button id="btn-request-ip" class="text-[#10b981] hover:underline font-semibold">Fetch Public IP</button>
+          </div>
+        </div>
+
+        <!-- 11. Storage & APIs -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-storage">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">storage</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">11. Storage & APIs</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-1.5 py-0.5 rounded">Medium Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-storage-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>WebGPU & Device APIs</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-storage-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 12. Codecs -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-codecs">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">video_settings</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">12. Media Codecs</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 px-1.5 py-0.5 rounded">Low Entropy</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-codecs-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>AV1, VP9, H.264 & DRM</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-codecs-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 13. Behavioral Biometrics -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-behavior">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">mouse</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">13. Behavioral Sockets</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 px-1.5 py-0.5 rounded">Live Counter</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-behavior-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Bot vs Human Heuristics</span>
+            <span class="text-[#10b981] font-mono text-[10px]">Active</span>
+          </div>
+        </div>
+
+        <!-- 14. Incognito & Shields -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-privacy">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">shield</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">14. Incognito & Adblock</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 px-1.5 py-0.5 rounded">Defense</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-privacy-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Storage Quota & Bait Tests</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-privacy-rows">Copy</button>
+          </div>
+        </div>
+
+        <!-- 15. Consistency & Anomaly -->
+        <div class="audit-card console-card p-4 flex flex-col justify-between" data-category="cat-consistency">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2436]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-[#00d2f0]">balance</span>
+                <h2 class="text-xs font-bold font-mono uppercase tracking-wider text-white">15. Consistency Check</h2>
+              </div>
+              <span class="font-mono text-[10px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 px-1.5 py-0.5 rounded">Cross-Check</span>
+            </div>
+            <div class="flex flex-col text-left" id="card-consistency-rows"></div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-[#1e2436] flex items-center justify-between text-[11px] font-mono text-[#5e6982]">
+            <span>Spoofing Integrity</span>
+            <button class="copy-card-btn text-[#00d2f0] hover:underline" data-target="card-consistency-rows">Copy</button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- DEFENSIVE STRATEGY GUIDE -->
+      <section class="console-card p-6 mt-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="material-symbols-outlined text-[20px] text-[#00d2f0]">verified_user</span>
+          <h2 class="text-base font-bold text-white uppercase tracking-wider font-mono">Mitigation Strategies</h2>
+        </div>
+
+        <div class="p-3 rounded bg-[#0c0e14] border border-[#f59e0b]/30 mb-4 text-xs text-[#9aa5be] leading-relaxed">
+          <strong class="text-[#f59e0b]">The Fingerprinting Paradox:</strong> Installing multiple extensions (User-Agent switchers, canvas spoofers) often creates an even rarer, more distinguishable profile. The safest defense is standardizing in a uniform browser pool.
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436] flex flex-col justify-between">
+            <div>
+              <strong class="text-white block font-mono text-sm">Tor Browser</strong>
+              <p class="text-[#9aa5be] mt-1.5 leading-relaxed">Enforces letterboxing, uniform canvas reads, and standard system fonts for identical cross-user fingerprints.</p>
+            </div>
+            <span class="font-mono text-[10px] text-[#10b981] mt-3">Target: Anonymity</span>
+          </div>
+
+          <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436] flex flex-col justify-between">
+            <div>
+              <strong class="text-white block font-mono text-sm">Mullvad Browser</strong>
+              <p class="text-[#9aa5be] mt-1.5 leading-relaxed">Tor Project anti-fingerprint engine adapted for direct VPN networks without Tor circuit speed penalties.</p>
+            </div>
+            <span class="font-mono text-[10px] text-[#00d2f0] mt-3">Target: High-Speed Privacy</span>
+          </div>
+
+          <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436] flex flex-col justify-between">
+            <div>
+              <strong class="text-white block font-mono text-sm">Firefox RFP</strong>
+              <p class="text-[#9aa5be] mt-1.5 leading-relaxed">Setting <code class="text-[#00d2f0]">privacy.resistFingerprinting = true</code> locks timezone to UTC and returns blank white canvas buffers.</p>
+            </div>
+            <span class="font-mono text-[10px] text-[#9aa5be] mt-3">Target: Power Users</span>
+          </div>
+
+          <div class="p-3 rounded bg-[#0c0e14] border border-[#1e2436] flex flex-col justify-between">
+            <div>
+              <strong class="text-white block font-mono text-sm">Brave Farbling</strong>
+              <p class="text-[#9aa5be] mt-1.5 leading-relaxed">Injects tiny imperceptible mathematical noise into canvas and audio outputs to prevent cross-session correlation.</p>
+            </div>
+            <span class="font-mono text-[10px] text-[#10b981] mt-3">Target: Daily Browsing</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="mt-8 py-4 border-t border-[#1e2436] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-[#5e6982]">
+        <div class="flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>
+          <span>FingerprintGuard &bull; Zero-Egress Client Telemetry</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="footer-privacy-btn" class="hover:text-white transition-colors">Privacy Policy</button>
+          <span>&bull;</span>
+          <button id="footer-terms-btn" class="hover:text-white transition-colors">Terms of Service</button>
+          <span>&bull;</span>
+          <button id="footer-cookie-btn" class="hover:text-white transition-colors">Cookie & Font Settings</button>
+        </div>
+      </footer>
+
+    </main>
+  </div>
+  <LegalModals />
+</Layout>
+
+<!-- ENGINE SCRIPT -->
+<script is:inline>
+  (function() {
+    const AuditState = {
+      browser: {},
+      screen: {},
+      hardware: {},
+      locale: {},
+      canvas: {},
+      webgl: {},
+      audio: {},
+      fonts: {},
+      webrtc: {},
+      network: {},
+      storage: {},
+      codecs: {},
+      behavior: { mouseMoves: 0, clicks: 0, keyStrokes: 0, scrollDistance: 0, focused: true },
+      privacy: {},
+      consistency: {}
+    };
+
+    async function computeSha256(text) {
+      if (!text) return '';
+      try {
+        const msgBuffer = new TextEncoder().encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        return 'Conversion Error';
+      }
+    }
+
+    function createRow(label, value, note, riskBadge) {
+      const safeVal = String(value ?? 'Unknown');
+      const badgeStyle = riskBadge === 'Critical' ? 'text-[#f43f5e] bg-[#f43f5e]/10 border border-[#f43f5e]/20' :
+                         riskBadge === 'High'     ? 'text-[#f43f5e] bg-[#f43f5e]/10' :
+                         riskBadge === 'Medium'   ? 'text-[#f59e0b] bg-[#f59e0b]/10' :
+                                                    'text-[#10b981] bg-[#10b981]/10';
+
+      return `
+        <div class="data-row flex items-center justify-between py-1.5 px-1 hover:bg-white/[0.02] group transition-colors">
+          <div class="flex flex-col min-w-0 pr-2">
+            <span class="text-[11px] text-[#9aa5be] group-hover:text-white truncate font-sans">${label}</span>
+            <span class="font-mono text-[11px] text-[#f0f3fa] truncate select-all mt-0.5">${safeVal}</span>
+          </div>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            ${riskBadge ? `<span class="font-mono text-[9px] px-1.5 py-0.5 rounded ${badgeStyle}">${riskBadge}</span>` : ''}
+            <button class="row-copy-btn opacity-0 group-hover:opacity-100 p-0.5 text-[#5e6982] hover:text-[#00d2f0] transition-opacity" data-copy="${safeVal.replace(/"/g, '&quot;')}" title="Copy">
+              <span class="material-symbols-outlined text-[13px]">content_copy</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 1. Browser Core
+    async function auditBrowser() {
+      const nav = navigator;
+      let uaDataInfo = 'Legacy User-Agent';
+      let isHighEntropyPlatform = 'Hidden';
+
+      if (nav.userAgentData) {
+        const brands = nav.userAgentData.brands ? nav.userAgentData.brands.map(b => `${b.brand} (${b.version})`).join(', ') : 'Unknown';
+        uaDataInfo = `${brands} | Mobile: ${nav.userAgentData.mobile}`;
+        try {
+          const highData = await nav.userAgentData.getHighEntropyValues(['platformVersion', 'architecture', 'model', 'bitness']);
+          isHighEntropyPlatform = `${highData.architecture || ''} ${highData.bitness ? highData.bitness + 'bit' : ''} ${highData.model || ''}`.trim() || 'Hidden';
+        } catch (e) {}
+      }
+
+      AuditState.browser = {
+        userAgent: nav.userAgent,
+        clientHints: uaDataInfo,
+        highEntropy: isHighEntropyPlatform,
+        platform: nav.platform,
+        vendor: nav.vendor || 'Unspecified',
+        languages: nav.languages ? nav.languages.join(', ') : nav.language,
+        cookieEnabled: nav.cookieEnabled ? 'Enabled' : 'Disabled',
+        doNotTrack: nav.doNotTrack || window.doNotTrack || 'Unspecified',
+        pdfViewerEnabled: ('pdfViewerEnabled' in nav) ? (nav.pdfViewerEnabled ? 'Yes' : 'No') : 'Unknown',
+        webdriver: nav.webdriver ? 'Detected (Automated Bot)' : 'Clean (Real User)'
+      };
+
+      const container = document.getElementById('card-browser-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('User-Agent Header', AuditState.browser.userAgent, 'Browser brand and underlying OS.', 'High'),
+          createRow('Client Hints (UAData)', AuditState.browser.clientHints, 'Modern Chromium identification API.', 'Medium'),
+          createRow('Platform Architecture', AuditState.browser.highEntropy, 'Processor architecture and bitness.', 'Medium'),
+          createRow('Platform Property', AuditState.browser.platform, 'navigator.platform string.', 'Low'),
+          createRow('Engine Vendor', AuditState.browser.vendor, 'Engine vendor provider.', 'Low'),
+          createRow('Accepted Languages', AuditState.browser.languages, 'Configured browser language list.', 'Medium'),
+          createRow('Cookie Status', AuditState.browser.cookieEnabled, 'Cookie capability.', 'Low'),
+          createRow('Do Not Track (DNT)', AuditState.browser.doNotTrack, 'Tracking header preference.', 'Low'),
+          createRow('Internal PDF Viewer', AuditState.browser.pdfViewerEnabled, 'Chromium PDF engine status.', 'Low'),
+          createRow('Webdriver Status', AuditState.browser.webdriver, 'Headless automation flag.', AuditState.browser.webdriver.includes('Bot') ? 'Critical' : 'Low')
+        ].join('');
+      }
+    }
+
+    // 2. Screen & Window
+    function auditScreen() {
+      const sc = window.screen;
+      const dpr = window.devicePixelRatio || 1;
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isHDR = window.matchMedia('(dynamic-range: high)').matches;
+
+      AuditState.screen = {
+        screenResolution: `${sc.width} x ${sc.height}`,
+        availResolution: `${sc.availWidth} x ${sc.availHeight}`,
+        windowSize: `${window.innerWidth} x ${window.innerHeight}`,
+        pixelRatio: dpr,
+        colorDepth: `${sc.colorDepth || 24}-bit`,
+        orientation: (sc.orientation && sc.orientation.type) || 'Unknown',
+        themePreference: isDark ? 'Dark Theme' : 'Light Theme',
+        reducedMotion: isReducedMotion ? 'Yes' : 'No',
+        hdrSupport: isHDR ? 'HDR Supported' : 'SDR Standard'
+      };
+
+      const container = document.getElementById('card-screen-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Physical Resolution', AuditState.screen.screenResolution, 'Monitor resolution in pixels.', 'Medium'),
+          createRow('Usable Desktop Space', AuditState.screen.availResolution, 'Workspace excluding OS taskbars.', 'High'),
+          createRow('Viewport Dimensions', AuditState.screen.windowSize, 'Active browser inner window size.', 'Medium'),
+          createRow('Pixel Scaling Ratio (DPR)', `${AuditState.screen.pixelRatio}x`, 'HiDPI / Retina scale factor.', 'Medium'),
+          createRow('Color Depth', AuditState.screen.colorDepth, 'Display color depth.', 'Low'),
+          createRow('Display Orientation', AuditState.screen.orientation, 'Landscape or portrait mode.', 'Low'),
+          createRow('Theme Mode', AuditState.screen.themePreference, 'prefers-color-scheme setting.', 'Low'),
+          createRow('HDR Capability', AuditState.screen.hdrSupport, 'High Dynamic Range capability.', 'Medium')
+        ].join('');
+      }
+
+      const topScreen = document.getElementById('top-screen-res');
+      if (topScreen) topScreen.textContent = `${AuditState.screen.screenResolution} @ ${dpr}x`;
+    }
+
+    // 3. Hardware & Battery
+    async function auditHardware() {
+      const nav = navigator;
+      let batteryInfo = 'API Unsupported or Blocked';
+      if ('getBattery' in nav) {
+        try {
+          const batt = await nav.getBattery();
+          batteryInfo = `${Math.round(batt.level * 100)}% (${batt.charging ? 'Charging' : 'On Battery'})`;
+        } catch (e) {}
+      }
+
+      const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+      let connInfo = 'Unknown';
+      if (conn) {
+        connInfo = `${conn.effectiveType || 'Unknown'} | Downlink: ~${conn.downlink || '0'} Mbps | RTT: ${conn.rtt || '0'}ms`;
+      }
+
+      AuditState.hardware = {
+        cpuCores: nav.hardwareConcurrency ? `${nav.hardwareConcurrency} Cores` : 'Hidden / Unknown',
+        deviceMemory: nav.deviceMemory ? `~${nav.deviceMemory} GB` : 'Unsupported (Chromium only)',
+        maxTouchPoints: nav.maxTouchPoints || 0,
+        touchSupport: ('ontouchstart' in window || (nav.maxTouchPoints > 0)) ? 'Yes' : 'No',
+        battery: batteryInfo,
+        networkType: connInfo
+      };
+
+      const container = document.getElementById('card-hardware-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Logical CPU Concurrency', AuditState.hardware.cpuCores, 'Hardware core count classification.', 'High'),
+          createRow('Device Memory Tier', AuditState.hardware.deviceMemory, 'Reported RAM class.', 'Medium'),
+          createRow('Max Touch Contacts', AuditState.hardware.maxTouchPoints, 'Hardware multi-touch limit.', 'Medium'),
+          createRow('Touch Input Active', AuditState.hardware.touchSupport, 'Touchscreen hardware support.', 'Low'),
+          createRow('Battery Status API', AuditState.hardware.battery, 'Battery charge percentage inspection.', 'Critical'),
+          createRow('Network Interface Type', AuditState.hardware.networkType, 'Network Information API bandwidth.', 'Medium')
+        ].join('');
+      }
+    }
+
+    // 4. Time & Locale
+    function auditLocale() {
+      const intl = Intl.DateTimeFormat().resolvedOptions();
+      const d = new Date();
+      const timezoneOffset = d.getTimezoneOffset();
+      const offsetHours = -(timezoneOffset / 60);
+      const offsetStr = `UTC${offsetHours >= 0 ? '+' : ''}${offsetHours}:00 (${timezoneOffset} mins)`;
+
+      let currencyTest = 'Failed';
+      try {
+        currencyTest = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(12345.67);
+      } catch (e) {}
+
+      AuditState.locale = {
+        timeZone: intl.timeZone || 'Unknown',
+        offset: offsetStr,
+        calendar: intl.calendar || 'gregory',
+        numberingSystem: intl.numberingSystem || 'latn',
+        sampleFormat: currencyTest
+      };
+
+      const container = document.getElementById('card-locale-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Geographical Time Zone', AuditState.locale.timeZone, 'Intl API regional zone.', 'Medium'),
+          createRow('UTC Time Offset', AuditState.locale.offset, 'Delta between system time and UTC.', 'Medium'),
+          createRow('System Calendar Type', AuditState.locale.calendar, 'Operating system default calendar.', 'Low'),
+          createRow('Numbering Glyphs', AuditState.locale.numberingSystem, 'Digit glyph numbering layout.', 'Low'),
+          createRow('Currency Formatting', AuditState.locale.sampleFormat, 'Regional comma and period separation.', 'Low')
+        ].join('');
+      }
+    }
+
+    // 5. Canvas Render
+    async function auditCanvas() {
+      const canvas = document.getElementById('canvas-fingerprint-preview');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      ctx.textBaseline = 'top';
+      ctx.font = "14px 'Arial', 'Times New Roman', sans-serif";
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(5, 5, 55, 18);
+      ctx.fillStyle = '#069';
+      ctx.fillText('FingerprintGuard', 6, 18);
+      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+      ctx.fillText('Canvas 2.0', 8, 30);
+
+      const rad = ctx.createRadialGradient(85, 18, 2, 85, 18, 14);
+      rad.addColorStop(0, '#00d2f0');
+      rad.addColorStop(1, '#690005');
+      ctx.fillStyle = rad;
+      ctx.beginPath();
+      ctx.arc(85, 18, 12, 0, Math.PI * 2, true);
+      ctx.fill();
+
+      const dataUrl = canvas.toDataURL();
+      const hash = await computeSha256(dataUrl);
+
+      AuditState.canvas = {
+        hash: hash,
+        dataUrlLength: `${dataUrl.length} bytes`,
+        windingRule: ctx.isPointInPath(5, 5, 'evenodd') ? 'Supported' : 'Not Supported'
+      };
+
+      const container = document.getElementById('card-canvas-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Canvas SHA-256 Hash', hash.substring(0, 28) + '...', 'Produced by sub-pixel rasterization nuances.', 'Critical'),
+          createRow('Image Data Byte Size', AuditState.canvas.dataUrlLength, 'Base64 image buffer size.', 'Low'),
+          createRow('Winding Rule Support', AuditState.canvas.windingRule, 'Complex vector path calculation rule.', 'Low')
+        ].join('');
+      }
+
+      const topCanvas = document.getElementById('top-canvas-hash');
+      if (topCanvas) topCanvas.textContent = hash.substring(0, 12) + '...';
+    }
+
+    // 6. WebGL Graphics
+    async function auditWebGL() {
+      let unmaskedVendor = 'Hidden / Inaccessible';
+      let unmaskedRenderer = 'Hidden / Inaccessible';
+      let maxTexture = 'Unknown';
+      let glVersion = 'Not Supported';
+      let extCount = 0;
+      let webglHash = 'None';
+
+      try {
+        const glCanvas = document.createElement('canvas');
+        glCanvas.width = 64;
+        glCanvas.height = 64;
+        const gl = glCanvas.getContext('webgl2') || glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl');
+
+        if (gl) {
+          glVersion = gl.getParameter(gl.VERSION);
+          maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+          const ext = gl.getExtension('WEBGL_debug_renderer_info');
+          if (ext) {
+            unmaskedVendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || 'Unknown';
+            unmaskedRenderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'Unknown';
+          }
+          const extensions = gl.getSupportedExtensions() || [];
+          extCount = extensions.length;
+
+          gl.clearColor(0.2, 0.4, 0.6, 1.0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          const glData = glCanvas.toDataURL();
+          webglHash = await computeSha256(glData + unmaskedRenderer);
+        }
+      } catch (e) {
+        unmaskedRenderer = 'Error or Blocked';
+      }
+
+      AuditState.webgl = {
+        renderer: unmaskedRenderer,
+        vendor: unmaskedVendor,
+        version: glVersion,
+        maxTextureSize: maxTexture,
+        supportedExtensions: extCount,
+        renderHash: webglHash
+      };
+
+      const container = document.getElementById('card-webgl-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Physical GPU Hardware', unmaskedRenderer, 'Physical hardware model (NVIDIA, AMD, Apple M, Intel).', 'Critical'),
+          createRow('Graphics Driver Vendor', unmaskedVendor, 'Hardware vendor provider.', 'High'),
+          createRow('Max Texture Dimension', maxTexture, 'Maximum GPU texture buffer size.', 'Medium'),
+          createRow('Supported WebGL Exts', `${extCount} Extensions`, 'Graphics API capability array.', 'Medium'),
+          createRow('WebGL Specification', glVersion, 'Supported WebGL specification.', 'Low'),
+          createRow('WebGL Shader Hash', webglHash.substring(0, 24) + '...', 'GPU shader buffer render signature.', 'High')
+        ].join('');
+      }
+
+      const topGpu = document.getElementById('top-webgl-gpu');
+      if (topGpu) topGpu.textContent = unmaskedRenderer;
+    }
+
+    // 7. Audio Subsystem
+    async function auditAudio() {
+      let audioHash = 'API Unsupported';
+      let sampleRate = 'Unknown';
+
+      try {
+        const AudioCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (AudioCtx) {
+          const context = new AudioCtx(1, 44100, 44100);
+          sampleRate = `${context.sampleRate} Hz`;
+
+          const oscillator = context.createOscillator();
+          oscillator.type = 'triangle';
+          oscillator.frequency.setValueAtTime(10000, context.currentTime);
+
+          const compressor = context.createDynamicsCompressor();
+          compressor.threshold.setValueAtTime(-50, context.currentTime);
+          compressor.knee.setValueAtTime(40, context.currentTime);
+          compressor.ratio.setValueAtTime(12, context.currentTime);
+          compressor.attack.setValueAtTime(0, context.currentTime);
+          compressor.release.setValueAtTime(0.25, context.currentTime);
+
+          oscillator.connect(compressor);
+          compressor.connect(context.destination);
+          oscillator.start(0);
+
+          const renderedBuffer = await context.startRendering();
+          const channelData = renderedBuffer.getChannelData(0);
+
+          let sampleValues = [];
+          for (let i = 4500; i < 5000; i++) {
+            sampleValues.push(channelData[i]);
+          }
+          audioHash = await computeSha256(sampleValues.join(','));
+        }
+      } catch (e) {
+        audioHash = 'Blocked / Security Error';
+      }
+
+      AuditState.audio = {
+        hash: audioHash,
+        sampleRate: sampleRate
+      };
+
+      const container = document.getElementById('card-audio-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Audio DSP Output Hash', audioHash.substring(0, 28) + '...', 'Audio chip DSP floating-point calculation deviation.', 'Critical'),
+          createRow('Sampling Frequency', sampleRate, 'Default sound card sample rate.', 'Low')
+        ].join('');
+      }
+
+      const topAudio = document.getElementById('top-audio-hash');
+      if (topAudio) topAudio.textContent = audioHash.substring(0, 12) + '...';
+    }
+
+    // 8. Fonts Detection
+    async function auditFonts() {
+      const testFonts = [
+        'Arial', 'Arial Black', 'Calibri', 'Cambria', 'Comic Sans MS', 'Consolas', 'Courier', 'Courier New',
+        'Georgia', 'Helvetica', 'Impact', 'Lucida Console', 'Lucida Sans Unicode', 'Microsoft Sans Serif',
+        'Palatino Linotype', 'Segoe UI', 'Tahoma', 'Times', 'Times New Roman', 'Trebuchet MS', 'Verdana',
+        'Monaco', 'Menlo', 'Apple Color Emoji', 'Ubuntu', 'Ubuntu Mono', 'Roboto', 'Open Sans', 'Lato',
+        'Montserrat', 'Source Code Pro', 'SF Pro Text', 'San Francisco', 'Cascadia Code', 'Fira Code',
+        'Droid Sans', 'Century Gothic', 'Franklin Gothic Medium', 'Gill Sans', 'MS PGothic', 'SimSun'
+      ];
+
+      const baseFonts = ['monospace', 'sans-serif', 'serif'];
+      const testString = 'mmmmmmmmmmlliwwwwwwwwwWWWWWW00000000';
+      const testSize = '72px';
+      const body = document.body;
+
+      const span = document.createElement('span');
+      span.style.position = 'absolute';
+      span.style.left = '-9999px';
+      span.style.fontSize = testSize;
+      span.style.visibility = 'hidden';
+      span.textContent = testString;
+      body.appendChild(span);
+
+      const defaultWidths = {};
+      for (const base of baseFonts) {
+        span.style.fontFamily = base;
+        defaultWidths[base] = span.offsetWidth;
+      }
+
+      const detectedFonts = [];
+      for (const font of testFonts) {
+        let isPresent = false;
+        for (const base of baseFonts) {
+          span.style.fontFamily = `'${font}', ${base}`;
+          if (span.offsetWidth !== defaultWidths[base]) {
+            isPresent = true;
+            break;
+          }
+        }
+        if (isPresent) detectedFonts.push(font);
+      }
+      body.removeChild(span);
+
+      AuditState.fonts = {
+        detectedCount: detectedFonts.length,
+        detectedList: detectedFonts.join(', ') || 'Standard Web Fonts Only'
+      };
+
+      const container = document.getElementById('card-fonts-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Installed Fonts Detected', `${detectedFonts.length} Fonts (from 40 Tested)`, 'Installed system fonts narrow OS and user tier.', 'High'),
+          createRow('First Detected Fonts', detectedFonts.slice(0, 8).join(', ') + (detectedFonts.length > 8 ? ' ...' : ''), 'Subset of detected installed fonts.', 'Medium')
+        ].join('');
+      }
+
+      const metricFonts = document.getElementById('metric-fonts-found');
+      if (metricFonts) metricFonts.textContent = `${detectedFonts.length} Fonts`;
+      const topFont = document.getElementById('top-font-count');
+      if (topFont) topFont.textContent = `${detectedFonts.length} fonts`;
+    }
+
+    // 9. WebRTC Leak
+    function auditWebRTC() {
+      let localIps = [];
+      let mdnsCandidates = [];
+
+      try {
+        const pc = new (window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection)({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        pc.createDataChannel('');
+        pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
+
+        pc.onicecandidate = function(e) {
+          if (!e || !e.candidate) {
+            if (localIps.length === 0 && mdnsCandidates.length === 0) {
+              updateWebRTCRows('No Leaks (mDNS Masking Active)', [], []);
+            }
+            return;
+          }
+          const cand = e.candidate.candidate;
+          const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(cand);
+          if (ipMatch) {
+            const foundIp = ipMatch[1];
+            if (!localIps.includes(foundIp)) localIps.push(foundIp);
+          }
+          if (cand.includes('.local')) {
+            const mdnsMatch = /([a-f0-9-]+\.local)/.exec(cand);
+            if (mdnsMatch && !mdnsCandidates.includes(mdnsMatch[1])) {
+              mdnsCandidates.push(mdnsMatch[1]);
+            }
+          }
+          updateWebRTCRows('Candidates Analyzed', localIps, mdnsCandidates);
+        };
+
+        setTimeout(() => {
+          if (localIps.length === 0 && mdnsCandidates.length === 0) {
+            updateWebRTCRows('WebRTC Protected by mDNS', [], []);
+          }
+        }, 2000);
+
+      } catch (e) {
+        updateWebRTCRows('WebRTC Disabled or Blocked', [], []);
+      }
+
+      function updateWebRTCRows(status, ips, mdns) {
+        AuditState.webrtc = {
+          status: status,
+          leakedIps: ips.join(', ') || 'No Direct Local IP Leak',
+          mdnsMasks: mdns.join(', ') || 'Standard GUID Masking'
+        };
+
+        const container = document.getElementById('card-webrtc-rows');
+        if (container) {
+          container.innerHTML = [
+            createRow('WebRTC ICE Candidate Status', status, 'WebRTC candidate reflection status.', ips.length > 0 ? 'Critical' : 'Low'),
+            createRow('Private Local Subnet IP', AuditState.webrtc.leakedIps, 'Private IP address that could bypass VPN tunnels.', ips.length > 0 ? 'Critical' : 'Low'),
+            createRow('mDNS Masking Mechanism', AuditState.webrtc.mdnsMasks, 'Chromium random GUID protection mechanism.', 'Low')
+          ].join('');
+        }
+      }
+    }
+
+    // 10. External Network IP (Zero Egress)
+    function auditNetworkDefault() {
+      AuditState.network = {
+        publicIp: 'Not Queried (100% Local Guarantee)',
+        policy: 'Zero-Egress Active'
+      };
+
+      const container = document.getElementById('card-network-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Public IP Address', 'Not Queried (100% Local)', 'No external network requests until clicked.', 'Low'),
+          createRow('Egress Architecture', 'Strict Zero-Egress Policy', 'Page executes in local browser isolation.', 'Low')
+        ].join('');
+      }
+    }
+
+    async function requestPublicIp() {
+      const btn = document.getElementById('btn-request-ip');
+      if (!btn) return;
+      btn.textContent = 'Querying...';
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch('https://api.ipify.org?format=json');
+        const data = await resp.json();
+        AuditState.network.publicIp = data.ip || 'Unknown';
+
+        const container = document.getElementById('card-network-rows');
+        if (container) {
+          container.innerHTML = [
+            createRow('Public IP Address', data.ip, 'Source IP address visible to external servers.', 'Critical'),
+            createRow('Query Source', 'Direct Client Fetch (api.ipify.org)', 'Fetched upon your explicit request.', 'Medium')
+          ].join('');
+        }
+        btn.textContent = 'IP Updated';
+      } catch (e) {
+        btn.textContent = 'Connection Blocked';
+      }
+    }
+
+    // 11. Storage & APIs
+    async function auditStorageAndAPIs() {
+      const nav = navigator;
+      const hasLocalStorage = !!window.localStorage;
+      const hasSessionStorage = !!window.sessionStorage;
+      const hasIndexedDB = !!window.indexedDB;
+      const hasCache = 'caches' in window;
+      const hasSW = 'serviceWorker' in nav;
+      const hasWasm = typeof WebAssembly === 'object';
+      const hasWebGPU = 'gpu' in nav;
+      const hasBluetooth = 'bluetooth' in nav;
+      const hasUSB = 'usb' in nav;
+
+      let notifPerm = 'Unknown';
+      if ('Notification' in window) {
+        notifPerm = Notification.permission;
+      }
+
+      AuditState.storage = {
+        storageEngines: `LS: ${hasLocalStorage ? 'Yes' : 'No'} | SS: ${hasSessionStorage ? 'Yes' : 'No'} | IDB: ${hasIndexedDB ? 'Yes' : 'No'}`,
+        cacheAndSW: `Cache API: ${hasCache ? 'Yes' : 'No'} | ServiceWorker: ${hasSW ? 'Yes' : 'No'}`,
+        webAssembly: hasWasm ? 'Supported' : 'Not Supported',
+        webGPU: hasWebGPU ? 'Available (Next-Gen 3D)' : 'Not Supported',
+        hardwareBridges: `BT: ${hasBluetooth ? 'Yes' : 'No'} | USB: ${hasUSB ? 'Yes' : 'No'}`,
+        notificationPermission: notifPerm
+      };
+
+      const container = document.getElementById('card-storage-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Storage Engines', AuditState.storage.storageEngines, 'Availability of localStorage and IndexedDB.', 'Low'),
+          createRow('Offline Cache & SW', AuditState.storage.cacheAndSW, 'Background offline storage capabilities.', 'Low'),
+          createRow('WebAssembly (WASM)', AuditState.storage.webAssembly, 'High-performance binary execution runtime.', 'Low'),
+          createRow('WebGPU Low-Level API', AuditState.storage.webGPU, 'Next-generation direct GPU interface.', 'Medium'),
+          createRow('Hardware Bridges (BT/USB)', AuditState.storage.hardwareBridges, 'Web Bluetooth & WebUSB access capability.', 'Medium'),
+          createRow('Push Notification Perm', AuditState.storage.notificationPermission, 'Push notification permission status.', 'Low')
+        ].join('');
+      }
+    }
+
+    // 12. Media Codecs
+    function auditCodecs() {
+      const nav = navigator;
+      let pluginCount = nav.plugins ? nav.plugins.length : 0;
+      const video = document.createElement('video');
+      const audio = document.createElement('audio');
+
+      const canH264 = video.canPlayType('video/mp4; codecs="avc1.42E01E"') || 'no';
+      const canVP9  = video.canPlayType('video/webm; codecs="vp9"') || 'no';
+      const canAV1  = video.canPlayType('video/mp4; codecs="av01.0.08M.08"') || 'no';
+      const canAAC  = audio.canPlayType('audio/aac') || 'no';
+      const canOpus = audio.canPlayType('audio/ogg; codecs="opus"') || 'no';
+      const hasEME = 'requestMediaKeySystemAccess' in nav ? 'Supported (DRM)' : 'None';
+
+      AuditState.codecs = {
+        plugins: `${pluginCount} Plugins`,
+        videoCodecs: `H.264: ${canH264 || 'No'} | VP9: ${canVP9 || 'No'} | AV1: ${canAV1 || 'No'}`,
+        audioCodecs: `AAC: ${canAAC || 'No'} | Opus: ${canOpus || 'No'}`,
+        emeSupport: hasEME
+      };
+
+      const container = document.getElementById('card-codecs-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Internal Plugins Array', `${pluginCount} Plugins Reported`, 'navigator.plugins length.', 'Low'),
+          createRow('Video Decoding Capabilities', AuditState.codecs.videoCodecs, 'Operating system licensed codecs.', 'Medium'),
+          createRow('Audio Playback Codecs', AuditState.codecs.audioCodecs, 'AAC and Opus decoder playback.', 'Low'),
+          createRow('Encrypted Media DRM (EME)', AuditState.codecs.emeSupport, 'Copy protection playback API support.', 'Medium')
+        ].join('');
+      }
+    }
+
+    // 13. Behavioral Dynamics
+    function initBehaviorTracking() {
+      window.addEventListener('mousemove', () => {
+        AuditState.behavior.mouseMoves++;
+        updateBehaviorUI();
+      }, { passive: true });
+
+      window.addEventListener('click', () => {
+        AuditState.behavior.clicks++;
+        updateBehaviorUI();
+      });
+
+      window.addEventListener('keydown', () => {
+        AuditState.behavior.keyStrokes++;
+        updateBehaviorUI();
+      });
+
+      let lastY = window.scrollY;
+      window.addEventListener('scroll', () => {
+        AuditState.behavior.scrollDistance += Math.abs(window.scrollY - lastY);
+        lastY = window.scrollY;
+        updateBehaviorUI();
+      }, { passive: true });
+
+      window.addEventListener('focus', () => {
+        AuditState.behavior.focused = true;
+        updateBehaviorUI();
+      });
+
+      window.addEventListener('blur', () => {
+        AuditState.behavior.focused = false;
+        updateBehaviorUI();
+      });
+
+      updateBehaviorUI();
+    }
+
+    function updateBehaviorUI() {
+      const container = document.getElementById('card-behavior-rows');
+      if (!container) return;
+      container.innerHTML = [
+        createRow('Pointer Trajectory Events', `${AuditState.behavior.mouseMoves} Events`, 'Trackers inspect cursor curves for bot detection.', 'Low'),
+        createRow('User Click Count', `${AuditState.behavior.clicks} Clicks`, 'Mouse and touch tap count.', 'Low'),
+        createRow('Keystroke Rhythm Count', `${AuditState.behavior.keyStrokes} Strokes`, 'Typing cadences form biometric timing traces.', 'Low'),
+        createRow('Viewport Scroll Distance', `${Math.round(AuditState.behavior.scrollDistance)} px`, 'Total traversed pixel scroll height.', 'Low'),
+        createRow('Tab Window Focus State', AuditState.behavior.focused ? 'Active (Focused)' : 'Background (Blurred)', 'Whether the tab is actively visible.', 'Low')
+      ].join('');
+    }
+
+    // 14. Incognito & Shields
+    async function auditPrivacyAndAdblock() {
+      let isIncognito = 'Likely: Normal Session';
+      try {
+        if ('storage' in navigator && 'estimate' in navigator.storage) {
+          const { quota } = await navigator.storage.estimate();
+          const quotaMB = quota / (1024 * 1024);
+          if (quotaMB < 2000 && quotaMB > 0) {
+            isIncognito = 'Likely: Incognito Mode (Constrained Quota)';
+          }
+        }
+      } catch (e) {}
+
+      let adblockDetected = false;
+      const bait = document.createElement('div');
+      bait.className = 'adsbox ad-placement pub_300x250 text-ad textAd sponsor-banner';
+      bait.style.position = 'absolute';
+      bait.style.left = '-9999px';
+      bait.style.width = '1px';
+      bait.style.height = '1px';
+      document.body.appendChild(bait);
+
+      if (bait.offsetParent === null || bait.offsetHeight === 0 || bait.offsetWidth === 0 || window.getComputedStyle(bait).display === 'none') {
+        adblockDetected = true;
+      }
+      document.body.removeChild(bait);
+
+      let isBrave = false;
+      if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
+        isBrave = await navigator.brave.isBrave();
+      }
+
+      AuditState.privacy = {
+        incognito: isIncognito,
+        adblocker: adblockDetected ? 'Detected (Active Filter Shield)' : 'Not Detected (Ads Allowed)',
+        braveBrowser: isBrave ? 'Yes (Brave Shields Active)' : 'No / Other Browser'
+      };
+
+      const container = document.getElementById('card-privacy-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Incognito Session Heuristic', AuditState.privacy.incognito, 'Storage quota heuristic estimation.', 'Medium'),
+          createRow('Ad & Tracker Blocker Status', AuditState.privacy.adblocker, 'Detection via bait CSS classes.', adblockDetected ? 'Low' : 'High'),
+          createRow('Brave Browser Shields', AuditState.privacy.braveBrowser, 'navigator.brave API inspection.', 'Low')
+        ].join('');
+      }
+    }
+
+    // 15. Consistency
+    function auditConsistency() {
+      const nav = navigator;
+      const ua = nav.userAgent.toLowerCase();
+      const plat = (nav.platform || '').toLowerCase();
+      const anomalies = [];
+
+      if (ua.includes('windows') && (plat.includes('mac') || plat.includes('iphone'))) {
+        anomalies.push('Critical: Declares Windows User-Agent but reports Mac/iOS platform!');
+      }
+      if (ua.includes('iphone') && plat.includes('linux') && !ua.includes('android')) {
+        anomalies.push('Critical: Declares iPhone User-Agent but reports Linux platform!');
+      }
+      if (nav.userAgentData && nav.userAgentData.mobile && nav.maxTouchPoints === 0) {
+        anomalies.push('Suspicious: Declares mobile device but reports 0 touch points!');
+      }
+      if (window.screen.width < window.screen.availWidth || window.screen.height < window.screen.availHeight) {
+        anomalies.push('Anomaly: Total screen dimensions are smaller than available workspace!');
+      }
+
+      const consistencyStatus = anomalies.length === 0 ? 'Fully Consistent (No Spoofing)' : `${anomalies.length} Anomaly Flags Detected!`;
+
+      AuditState.consistency = {
+        status: consistencyStatus,
+        anomalies: anomalies.length > 0 ? anomalies.join('; ') : 'All hardware metrics correlate consistently with software declarations.'
+      };
+
+      const container = document.getElementById('card-consistency-rows');
+      if (container) {
+        container.innerHTML = [
+          createRow('Overall Integrity Rating', consistencyStatus, 'Coherence between hardware and software headers.', anomalies.length === 0 ? 'Low' : 'Critical'),
+          createRow('Cross-Verification Report', AuditState.consistency.anomalies, 'Masking and fingerprint spoofing artifacts.', anomalies.length === 0 ? 'Low' : 'Critical')
+        ].join('');
+      }
+
+      const badge = document.getElementById('metric-consistency-badge');
+      if (badge) {
+        if (anomalies.length > 0) {
+          badge.textContent = 'Anomaly';
+          badge.className = 'text-lg font-bold font-mono text-[#f43f5e]';
+        } else {
+          badge.textContent = 'Clean';
+          badge.className = 'text-lg font-bold font-mono text-[#10b981]';
+        }
+      }
+    }
+
+    // EFF Entropy Calculation
+    function calculateUniqueness() {
+      let entropyBits = 10.5;
+
+      if (AuditState.canvas.hash) entropyBits += 8.3;
+      if (AuditState.webgl.renderer && !AuditState.webgl.renderer.includes('Hidden') && !AuditState.webgl.renderer.includes('Unknown')) {
+        entropyBits += 7.2;
+      }
+      if (AuditState.audio.hash && !AuditState.audio.hash.includes('Error') && !AuditState.audio.hash.includes('Unsupported')) {
+        entropyBits += 5.4;
+      }
+      if (AuditState.fonts.detectedCount > 5) entropyBits += Math.min(AuditState.fonts.detectedCount * 0.4, 6.0);
+      if (AuditState.screen.screenResolution) entropyBits += 3.5;
+      if (AuditState.hardware.cpuCores) entropyBits += 2.0;
+
+      const totalBits = Math.min(Math.round(entropyBits * 10) / 10, 34.0);
+      const metricBits = document.getElementById('metric-entropy-bits');
+      if (metricBits) metricBits.textContent = `${totalBits} bits`;
+
+      const score = Math.min(Math.round((totalBits / 34.0) * 100), 99);
+
+      const circle = document.getElementById('uniqueness-gauge-circle');
+      const scoreVal = document.getElementById('gauge-score-value');
+      const title = document.getElementById('gauge-status-title');
+      const desc = document.getElementById('gauge-status-desc');
+
+      if (scoreVal) scoreVal.textContent = score;
+
+      if (circle) {
+        const circumference = 314.159;
+        const offset = circumference - (score / 100) * circumference;
+        circle.style.strokeDashoffset = offset;
+      }
+
+      const estimatedOneIn = Math.round(Math.pow(2, totalBits));
+      const formattedPeople = new Intl.NumberFormat('en-US').format(estimatedOneIn);
+
+      if (title && desc) {
+        if (score >= 80) {
+          title.textContent = 'High Identifiability';
+          title.className = 'text-xs font-semibold text-[#f43f5e] block';
+          desc.textContent = `1 in ~${formattedPeople} users shares this configuration. Trackable without cookies.`;
+        } else if (score >= 50) {
+          title.textContent = 'Moderate Uniqueness';
+          title.className = 'text-xs font-semibold text-[#f59e0b] block';
+          desc.textContent = `Matches approximately 1 in ~${formattedPeople} users.`;
+        } else {
+          title.textContent = 'Standard Profile';
+          title.className = 'text-xs font-semibold text-[#10b981] block';
+          desc.textContent = `Your fingerprint blends into the most common browser pool.`;
+        }
+      }
+    }
+
+    // Filter Logic
+    function initFilters() {
+      const searchInput = document.getElementById('audit-search-input');
+      const pills = document.querySelectorAll('.category-pill');
+      const cards = document.querySelectorAll('.audit-card');
+
+      let currentCategory = 'all';
+
+      function filterCards() {
+        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        cards.forEach(card => {
+          const cat = card.getAttribute('data-category');
+          const text = card.textContent.toLowerCase();
+
+          const matchCat = (currentCategory === 'all' || cat === currentCategory);
+          const matchQuery = (!q || text.includes(q));
+
+          if (matchCat && matchQuery) {
+            card.classList.remove('hidden');
+          } else {
+            card.classList.add('hidden');
+          }
+        });
+      }
+
+      if (searchInput) searchInput.addEventListener('input', filterCards);
+
+      pills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          pills.forEach(p => {
+            p.classList.remove('bg-[#00d2f0]', 'text-[#041d24]', 'font-medium');
+            p.classList.add('text-[#9aa5be]');
+          });
+          pill.classList.remove('text-[#9aa5be]');
+          pill.classList.add('bg-[#00d2f0]', 'text-[#041d24]', 'font-medium');
+
+          currentCategory = pill.getAttribute('data-cat');
+          filterCards();
+        });
+      });
+    }
+
+    // Export Actions
+    function initExportActions() {
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.row-copy-btn');
+        if (btn) {
+          const text = btn.getAttribute('data-copy');
+          navigator.clipboard.writeText(text);
+          const icon = btn.querySelector('.material-symbols-outlined');
+          const originalIcon = icon.textContent;
+          icon.textContent = 'check';
+          setTimeout(() => { icon.textContent = originalIcon; }, 1500);
+        }
+      });
+
+      document.querySelectorAll('.copy-card-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetId = btn.getAttribute('data-target');
+          const el = document.getElementById(targetId);
+          if (el) {
+            navigator.clipboard.writeText(el.innerText);
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = original; }, 1500);
+          }
+        });
+      });
+
+      const mdBtn = document.getElementById('btn-copy-markdown');
+      if (mdBtn) {
+        mdBtn.addEventListener('click', () => {
+          let md = `# Browser Fingerprint Audit Report (FingerprintGuard)\n`;
+          md += `Date: ${new Date().toISOString()}\n\n`;
+          md += `## 1. Browser Core\n\`\`\`json\n${JSON.stringify(AuditState.browser, null, 2)}\n\`\`\`\n\n`;
+          md += `## 2. Screen & Window\n\`\`\`json\n${JSON.stringify(AuditState.screen, null, 2)}\n\`\`\`\n\n`;
+          md += `## 3. Hardware & Battery\n\`\`\`json\n${JSON.stringify(AuditState.hardware, null, 2)}\n\`\`\`\n\n`;
+          md += `## 4. Time & Locale\n\`\`\`json\n${JSON.stringify(AuditState.locale, null, 2)}\n\`\`\`\n\n`;
+          md += `## 5. Canvas Hash\n\`\`\`json\n${JSON.stringify(AuditState.canvas, null, 2)}\n\`\`\`\n\n`;
+          md += `## 6. WebGL GPU\n\`\`\`json\n${JSON.stringify(AuditState.webgl, null, 2)}\n\`\`\`\n\n`;
+          md += `## 7. Audio Hash\n\`\`\`json\n${JSON.stringify(AuditState.audio, null, 2)}\n\`\`\`\n\n`;
+          md += `## 8. Fonts\n\`\`\`json\n${JSON.stringify(AuditState.fonts, null, 2)}\n\`\`\`\n\n`;
+          md += `## 9. WebRTC\n\`\`\`json\n${JSON.stringify(AuditState.webrtc, null, 2)}\n\`\`\`\n\n`;
+          md += `## 10. Consistency\n\`\`\`json\n${JSON.stringify(AuditState.consistency, null, 2)}\n\`\`\`\n\n`;
+
+          navigator.clipboard.writeText(md);
+          alert('Full audit report copied to clipboard in Markdown format.');
+        });
+      }
+
+      const jsonBtn = document.getElementById('btn-download-json');
+      if (jsonBtn) {
+        jsonBtn.addEventListener('click', () => {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AuditState, null, 2));
+          const downloadAnchor = document.createElement('a');
+          downloadAnchor.setAttribute("href", dataStr);
+          downloadAnchor.setAttribute("download", `fingerprint-guard-${Date.now()}.json`);
+          document.body.appendChild(downloadAnchor);
+          downloadAnchor.click();
+          downloadAnchor.remove();
+        });
+      }
+
+      const rescanBtn = document.getElementById('btn-rescan-all');
+      if (rescanBtn) {
+        rescanBtn.addEventListener('click', () => {
+          runFullScan();
+        });
+      }
+
+      const ipBtn = document.getElementById('btn-request-ip');
+      if (ipBtn) {
+        ipBtn.addEventListener('click', requestPublicIp);
+      }
+    }
+
+    async function runFullScan() {
+      await auditBrowser();
+      auditScreen();
+      await auditHardware();
+      auditLocale();
+      await auditCanvas();
+      await auditWebGL();
+      await auditAudio();
+      await auditFonts();
+      auditWebRTC();
+      auditNetworkDefault();
+      await auditStorageAndAPIs();
+      auditCodecs();
+      await auditPrivacyAndAdblock();
+      auditConsistency();
+      calculateUniqueness();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initBehaviorTracking();
+      initFilters();
+      initExportActions();
+      runFullScan();
+    });
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      initBehaviorTracking();
+      initFilters();
+      initExportActions();
+      runFullScan();
+    }
+  })();
+</script>

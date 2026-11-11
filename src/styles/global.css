@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #0c0e14;
+    --bg-card: #131722;
+    --bg-card-hover: #181d2b;
+    --border-subtle: #1e2436;
+    --border-strong: #2f3854;
+    --text-primary: #f0f3fa;
+    --text-secondary: #9aa5be;
+    --text-muted: #5e6982;
+    --cyan: #00d2f0;
+    --emerald: #10b981;
+    --rose: #f43f5e;
+    --amber: #f59e0b;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.011em;
+  }
+
+  code, pre, .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Purpose-driven engineering cards: sharp, readable, clear contrast */
+.console-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.console-card:hover {
+  border-color: var(--border-strong);
+  background-color: var(--bg-card-hover);
+}
+
+.data-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.data-row:last-child {
+  border-bottom: none;
+}
+
+/* Focus styles for keyboard navigation (WCAG) */
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
