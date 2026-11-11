@@ -1,9 +1,10 @@
 {
-  "name": "fingerprintdash",
+  "name": "what-my-browser-leaks",
   "type": "module",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "description": "Zero-egress client-side browser fingerprint and privacy audit suite",
   "engines": {
-    "node": ">=22.23.4"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "dev": "astro dev",
